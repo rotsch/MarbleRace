@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Marble Race</title>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <canvas id="scene"></canvas>
+    <div id="ui">
+      <section id="ranking" class="panel">
+        <h2 id="ranking-title">Ranking</h2>
+        <ol id="ranking-list"></ol>
+        <div id="clock">0.00 s</div>
+      </section>
+      <section id="controls" class="panel">
+        <label>Seed <input id="seed" type="text" spellcheck="false" /></label>
+        <div class="row">
+          <button id="restart">Restart</button>
+          <button id="random" title="New random seed">New seed</button>
+        </div>
+        <label>Speed <span id="speed-value">1.00x</span>
+          <input id="speed" type="range" min="0.25" max="2" step="0.05" value="1" />
+        </label>
+        <label class="check"><input id="debug" type="checkbox" /> Physics debug (D)</label>
+        <label class="check"><input id="free" type="checkbox" /> Free camera (C)</label>
+        <p id="hint">Follow camera tracks the leader.</p>
+      </section>
+    </div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
