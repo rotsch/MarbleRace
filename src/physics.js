@@ -3,6 +3,9 @@ import { PHYSICS } from './config.js';
 export function createWorld(RAPIER) {
   const world = new RAPIER.World({ x: 0, y: PHYSICS.gravity, z: 0 });
   world.timestep = PHYSICS.timestep;
+  world.integrationParameters.numSolverIterations = PHYSICS.solverIterations;
+  world.integrationParameters.numInternalPgsIterations = PHYSICS.pgsIterations;
+  world.integrationParameters.contact_natural_frequency = PHYSICS.contactFrequency;
   return world;
 }
 

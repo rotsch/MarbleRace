@@ -10,6 +10,13 @@ export const PHYSICS = {
   timestep: 1 / 120,
   maxSubsteps: 8, // per rendered frame, avoids the spiral of death
   maxFrameTime: 0.1,
+  // Solver settings chosen from measurements (see README, "Physics notes"):
+  // with more than one solver substep Rapier lets a fast-spinning ball sink
+  // into the surface it rolls on, so use one substep and a few PGS sweeps.
+  solverIterations: 1,
+  pgsIterations: 4,
+  // Contact stiffness in Hz. The default 30 is too soft for 10x gravity.
+  contactFrequency: 60,
 };
 
 export const MARBLE = {

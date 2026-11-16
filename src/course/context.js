@@ -3,7 +3,7 @@ import {
 } from 'three';
 import { ConvexGeometry } from 'three/examples/jsm/geometries/ConvexGeometry.js';
 import { TRACK } from '../config.js';
-import { frameQuat } from './frame.js';
+import { frameQuat, framePoint } from './frame.js';
 
 // Everything a section needs to add itself to the course. Colliders are always
 // created; meshes and outlines only when `materials` is given (browser), so the
@@ -20,7 +20,7 @@ export class CourseContext {
     this.sectionName = 'start';
     this.minY = Infinity;
     this.bounds = { min: new Vector3(Infinity, Infinity, Infinity), max: new Vector3(-Infinity, -Infinity, -Infinity) };
-    this.finishHandle = null;
+    this.sensors = new Map(); // collider handle -> name
     this.spawn = null;
   }
 
@@ -86,7 +86,7 @@ export class CourseContext {
 
   // Box given in a frame's local coordinates (x left, y up, z forward).
   addBoxAt(frame, local, hx, hy, hz, material) {
-    const c = frame.pos.clone().addScaledVector(frame.L, local.x).addScaledVector(frame.U, local.y).addScaledVector(frame.F, local.z);
+    const c = framePoint(frame, local.x, local.y, local.z);
     return this.addBox(c, frameQuat(frame), hx, hy, hz, material);
   }
 
@@ -105,12 +105,20 @@ export class CourseContext {
     return this._physics(desc, material);
   }
 
-  addFinishSensor(center, quat, hx, hy, hz) {
+  // Invisible sensor box. 'finish' ends the race for a marble; other names
+  // are just counted (used to measure which route marbles take).
+  addSensor(name, center, quat, hx, hy, hz) {
     const R = this.RAPIER;
-    const desc = this._place(R.ColliderDesc.cuboid(hx, hy, hz), center, quat)
+    const desc = this.RAPIER.ColliderDesc.cuboid(hx, hy, hz)
+      .setTranslation(center.x, center.y, center.z)
+      .setRotation(quat)
       .setSensor(true)
       .setActiveEvents(R.ActiveEvents.COLLISION_EVENTS);
-    this.finishHandle = this.world.createCollider(desc, this.body).handle;
+    this.sensors.set(this.world.createCollider(desc, this.body).handle, name);
+  }
+
+  addSensorAt(name, frame, local, hx, hy, hz) {
+    this.addSensor(name, framePoint(frame, local.x, local.y, local.z), frameQuat(frame), hx, hy, hz);
   }
 
   // Record centre-line frames for ranking, camera heading and rescue points.

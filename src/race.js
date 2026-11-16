@@ -22,6 +22,7 @@ export class Race {
     this.time = 0;
     this.steps = 0;
     this.results = [];
+    this.counters = {}; // sensor name -> set of marble indices that crossed it
     this.log = []; // { time, marble, type: 'nudge' | 'rescue', section }
   }
 
@@ -35,14 +36,19 @@ export class Race {
     this.steps++;
     this.events.drainCollisionEvents((h1, h2, started) => {
       if (!started) return;
-      const finish = this.course.finishHandle;
-      const other = h1 === finish ? h2 : h2 === finish ? h1 : null;
-      const m = other !== null && this.byHandle.get(other);
-      if (m && !m.finished) {
+      const sensors = this.course.sensors;
+      const name = sensors.get(h1) ?? sensors.get(h2);
+      const m = this.byHandle.get(h1) ?? this.byHandle.get(h2);
+      if (!name || !m) return;
+      if (name === 'finish') {
+        if (m.finished) return;
         m.finished = true;
         m.finishTime = this.time;
         m.place = this.results.length + 1;
         this.results.push(m);
+      } else {
+        const seen = (this.counters[name] ??= new Set());
+        seen.add(m.index);
       }
     });
     for (const m of this.marbles) {
@@ -104,7 +110,9 @@ export class Race {
     // Each rescue places the marble a little further along, so it cannot loop.
     let i = m.pathIndex;
     const target = Math.max(m.progress, m.maxProgress - 1) + 0.5 + m.rescues * 0.5;
-    while (i < path.length - 1 && path[i].s < target) i++;
+    const cap = this.course.finishIndex - 8; // never drop a marble past the finish line
+    while (i < cap && path[i].s < target) i++;
+    i = Math.min(i, cap);
     const p = path[i];
     const pos = p.pos.clone().addScaledVector(p.up, MARBLE.radius * 2.5);
     m.body.setTranslation(pos, true);

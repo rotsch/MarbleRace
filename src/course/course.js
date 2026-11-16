@@ -3,6 +3,11 @@ import { deg } from './frame.js';
 import * as start from './sections/start.js';
 import * as straight from './sections/straight.js';
 import * as curve from './sections/curve.js';
+import * as pegField from './sections/pegField.js';
+import * as funnel from './sections/funnel.js';
+import * as splitter from './sections/splitter.js';
+import * as dropCatch from './sections/dropCatch.js';
+import * as bumpyRoad from './sections/bumpyRoad.js';
 import * as finish from './sections/finish.js';
 
 // The course layout: an ordered chain of sections. Each section takes the exit
@@ -15,6 +20,11 @@ export function buildCourse(ctx) {
   };
 
   add('Start', start, { len: 3 });
-  add('Track', straight, { len: 4, pitch: deg(-10) });
+  add('Peg field', pegField);
+  add('Curve 1', curve, { radius: 1.6, angle: deg(-70), pitch: deg(-8) });
+  add('Funnel', funnel, { side: 1, exitYaw: deg(-20) });
+  add('Splitter', splitter, { side: -1 });
+  add('Curve 2', curve, { radius: 1.6, angle: deg(60), pitch: deg(-7) });
+  add('Drop and catch', dropCatch);
   add('Finish', finish);
 }

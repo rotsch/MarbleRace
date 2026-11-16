@@ -2,6 +2,7 @@ import { TRACK } from '../config.js';
 import { framePoint, tracePath } from './frame.js';
 import { sweepRings, v2 } from './geometry.js';
 
+const JOINT_RELIEF = 0.005;
 const val = (v, d, total, i) => (typeof v === 'function' ? v(d, total, i) : v);
 
 // Cross-section of a U channel in local (x = left, y = up) coordinates.
@@ -29,9 +30,14 @@ export function buildTrack(ctx, frames, opts = {}) {
     if (typeof w === 'number') w = { l: w / 2, r: w / 2 };
     let h = val(opts.rail ?? TRACK.railHeight, d, total, i);
     if (typeof h === 'number') h = { l: h, r: h };
-    const prof = uProfile(w.l, w.r, h.l, h.r);
+    // Joint relief: each piece starts a few millimetres lower and wider than
+    // nominal and eases back. A marble crossing from the previous piece then
+    // always steps slightly down/out onto a face, and never runs into the
+    // leading edge of this mesh (the classic "ghost collision" at seams).
+    const relief = opts.relief === false ? 0 : JOINT_RELIEF * Math.max(0, 1 - d / 0.35);
+    const prof = uProfile(w.l + relief, w.r + relief, h.l, h.r);
     if (!profile0) profile0 = prof;
-    return prof.map((p) => framePoint(f, p.x, p.y, 0));
+    return prof.map((p) => framePoint(f, p.x, p.y - relief, 0));
   });
   ctx.addSolid(sweepRings(rings, profile0), opts.material);
   if (opts.path !== false) ctx.addPath(frames);

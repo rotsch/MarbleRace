@@ -41,6 +41,7 @@ function run(seed) {
     maxSpeed,
     unfinished: race.marbles.filter((m) => !m.finished).map((m) => `${m.name}@${race.course.path[m.pathIndex].section}`),
     sections: race.course.sections,
+    counters: Object.fromEntries(Object.entries(race.counters).map(([k, v]) => [k, v.size])),
     length: race.course.length,
   };
   race.dispose();
@@ -51,6 +52,7 @@ const list = only !== null ? [only] : Array.from({ length: seeds }, (_, i) => `s
 let ok = true;
 const totals = {};
 const incidents = {};
+const counters = {};
 let first = null;
 for (const seed of list) {
   const r = run(seed);
@@ -58,6 +60,7 @@ for (const seed of list) {
   const pass = r.finished === 8;
   ok &&= pass;
   for (const [k, v] of Object.entries(r.sectionTime)) totals[k] = (totals[k] || 0) + v / list.length;
+  for (const [k, v] of Object.entries(r.counters)) counters[k] = (counters[k] || 0) + v;
   for (const e of r.log) {
     const k = `${e.type} @ ${e.section}`;
     incidents[k] = (incidents[k] || 0) + 1;
@@ -74,6 +77,7 @@ for (const seed of list) {
 console.log(`\ncourse length ${first.length.toFixed(1)} units`);
 console.log('mean seconds per marble in each section:');
 for (const s of first.sections) console.log(`  ${s.name.padEnd(16)} ${(totals[s.name] || 0).toFixed(2)}`);
+console.log(`route counts over ${list.length * 8} marbles:`, counters);
 console.log('safety-net incidents:', Object.keys(incidents).length ? incidents : 'none');
 
 // Determinism: the same seed must reproduce the same result exactly.

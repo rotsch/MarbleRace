@@ -1,0 +1,65 @@
+import { Vector3 } from 'three';
+import { tracePath, sShift, pathLength, lastFrame } from '../frame.js';
+import { buildTrack, widthStops } from '../trackBuilder.js';
+import { TRACK } from '../../config.js';
+
+export const BRANCH_OFFSET = 0.5; // side-by-side branches sit this far from the merge centre line
+const MERGE_WIDTH = 2 * BRANCH_OFFSET + TRACK.width;
+
+// Y-merge: two parallel tracks at +-BRANCH_OFFSET flow into one.
+export function merge(ctx, center, opts = {}) {
+  const len = opts.len ?? 1.7;
+  const frames = tracePath(center, [{ len, pitch: opts.pitch ?? -0.14 }]);
+  buildTrack(ctx, frames, { width: widthStops([[0, MERGE_WIDTH], [len, TRACK.width]]), rail: 0.26, path: opts.path });
+  return lastFrame(frames);
+}
+
+// Brings a main track and a lower, slower side path back together.
+//  main: { pos, yaw, width }   start of the main (higher) track
+//  low:  { pos, width, wideLen } start of the low path (same heading as main)
+//  len:  forward distance from main.pos to the merge
+// Both descend to the same height: the low path at a gentle fixed slope, the
+// main track as steep as needed. Returns the exit pose after the merge.
+export function rejoin(ctx, { main, low, len, lowPitch = 0.07, mainSide }) {
+  const yaw = main.yaw;
+  const F = new Vector3(Math.sin(yaw), 0, Math.cos(yaw));
+  const L = new Vector3(Math.cos(yaw), 0, -Math.sin(yaw));
+  const rel = low.pos.clone().sub(main.pos);
+  const lowLat = rel.dot(L), lowFwd = rel.dot(F);
+  const side = mainSide ?? (lowLat > 0.01 ? -1 : 1);
+  const c = lowLat / 2;
+
+  const mainShiftLen = Math.min(len, 2.4);
+  const mainSegs = [...sShift(c + side * BRANCH_OFFSET, mainShiftLen), { len: len - mainShiftLen }];
+  const lowAdvance = len - lowFwd;
+  const lowLead = low.lead ?? 0; // straight run before the low path starts moving sideways
+  const lowShiftLen = Math.min(lowAdvance - lowLead, 2.8);
+  const lowSegs = [
+    { len: lowLead },
+    ...sShift(c - side * BRANCH_OFFSET - lowLat, lowShiftLen),
+    { len: lowAdvance - lowLead - lowShiftLen },
+  ].filter((s) => s.len > 1e-6);
+
+  const lowLen = pathLength(lowSegs), mainLen = pathLength(mainSegs);
+  const yMerge = low.pos.y - Math.tan(lowPitch) * lowLen;
+  const mainPitch = Math.atan((main.pos.y - yMerge) / mainLen);
+
+  const lowWide = low.wideLen ?? 0;
+  const lowFrames = tracePath({ pos: low.pos, yaw, pitch: -lowPitch }, lowSegs);
+  buildTrack(ctx, lowFrames, {
+    width: widthStops([[0, low.width ?? TRACK.width], [lowWide, low.width ?? TRACK.width], [lowWide + 1.3, TRACK.width]]),
+    rail: 0.26,
+    path: false,
+  });
+  const mainFrames = tracePath({ pos: main.pos, yaw, pitch: -mainPitch }, mainSegs);
+  buildTrack(ctx, mainFrames, {
+    width: widthStops([[0, main.width ?? TRACK.width], [1.2, TRACK.width]]),
+    rail: 0.26,
+  });
+  const center = {
+    pos: main.pos.clone().addScaledVector(F, len).addScaledVector(L, c).setY(yMerge),
+    yaw,
+    pitch: -0.14,
+  };
+  return { exit: merge(ctx, center), lowFrames, mainFrames, mainPitch };
+}
