@@ -30,7 +30,7 @@ Node 18 or newer.
 | New seed | restart with a random seed |
 | Speed slider | simulation speed 0.25x to 2x |
 | `B` or checkbox | physics debug view (draws every collider) |
-| `C` or checkbox | toggle follow camera / free fly camera |
+| `C` or Camera menu | cycle the camera: follow the leader → free fly → leader's view (rides on the leading marble, looking where it rolls; it switches marbles once a new leader is 2.5 cm ahead) |
 | click scene | enter free camera and steer with the mouse (pointer lock, `Esc` releases) |
 | `W` `A` `S` `D` | fly forward / left / back / right (enters free camera) |
 | `Q` / `E` | fly up / down |
@@ -99,7 +99,7 @@ src/
   marbles.js           marble bodies and their interpolation state
   race.js              spawn, ranking, finish sensor, safety net (no DOM, runs headless)
   render.js            renderer, boundless white space, lights, marble shadows, marble meshes, debug lines
-  camera.js            follow camera and free fly camera
+  camera.js            follow camera, free fly camera, leader's view
   ui.js                overlay
   main.js              wires it together, main loop
   course/

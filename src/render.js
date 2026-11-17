@@ -122,6 +122,7 @@ export class View {
     const n = new THREE.Vector3(), q = new THREE.Quaternion(), z = new THREE.Vector3(0, 0, 1);
     race.marbles.forEach((m, i) => {
       const s = this.shadows[i], p = this.marbleMeshes[i].position;
+      if (!this.marbleMeshes[i].visible) return (s.visible = false); // ridden in the leader's view
       const ray = new R.Ray({ x: p.x, y: p.y, z: p.z }, { x: this.sunDir.x, y: this.sunDir.y, z: this.sunDir.z });
       const hit = race.world.castRayAndGetNormal(ray, maxDist, true, flags, undefined, undefined, undefined,
         (c) => c.parent()?.handle === course);

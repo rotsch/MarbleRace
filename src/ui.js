@@ -3,6 +3,11 @@ import { TUNABLES, DEFAULTS, applyValues, currentValues, store } from './tuning.
 // Minimal DOM overlay: ranking / results, seed, restart, speed, toggles,
 // physics settings.
 const $ = (id) => document.getElementById(id);
+const CAMERA_HINTS = {
+  follow: 'Follow camera tracks the leader.',
+  free: 'Free camera: click to steer with the mouse (Esc releases), WASD move, Q/E up/down, Shift faster.',
+  pov: "Leader's view: riding on the leading marble.",
+};
 const hex = (c) => `#${c.toString(16).padStart(6, '0')}`;
 
 export class UI {
@@ -13,7 +18,7 @@ export class UI {
     this.seed = $('seed');
     this.speed = $('speed');
     this.debug = $('debug');
-    this.free = $('free');
+    this.camera = $('camera');
     this.texture = $('texture');
     this.hint = $('hint');
     this.leader = $('leader');
@@ -41,7 +46,10 @@ export class UI {
       handlers.speed(v);
     });
     this.debug.addEventListener('change', () => handlers.debug(this.debug.checked));
-    this.free.addEventListener('change', () => this.setFree(this.free.checked, handlers));
+    this.camera.addEventListener('change', () => {
+      this.setCamera(this.camera.value, handlers);
+      this.camera.blur(); // so the game keys work again right away
+    });
     this._buildPhysics(handlers);
     this.texture.addEventListener('change', () => this.setTexture(this.texture.checked, handlers));
     window.addEventListener('keydown', (e) => {
@@ -49,8 +57,9 @@ export class UI {
         this.debug.checked = !this.debug.checked;
         handlers.debug(this.debug.checked);
       } else if (e.key === 'c' || e.key === 'C') {
-        this.free.checked = !this.free.checked;
-        this.setFree(this.free.checked, handlers);
+        // Cycle follow -> free -> leader's view -> follow.
+        const modes = [...this.camera.options].map((o) => o.value);
+        this.setCamera(modes[(modes.indexOf(this.camera.value) + 1) % modes.length], handlers);
       } else if (e.key === 't' || e.key === 'T') {
         this.texture.checked = !this.texture.checked;
         this.setTexture(this.texture.checked, handlers);
@@ -142,15 +151,13 @@ export class UI {
 
   // Entering free mode from the camera itself (click or a movement key).
   enterFree(handlers) {
-    this.free.checked = true;
-    this.setFree(true, handlers);
+    this.setCamera('free', handlers);
   }
 
-  setFree(on, handlers) {
-    this.hint.textContent = on
-      ? 'Free camera: click to steer with the mouse (Esc releases), WASD move, Q/E up/down, Shift faster.'
-      : 'Follow camera tracks the leader.';
-    handlers.free(on);
+  setCamera(mode, handlers) {
+    this.camera.value = mode;
+    this.hint.textContent = CAMERA_HINTS[mode];
+    handlers.camera(mode);
   }
 
   // Progress line: one marker per marble at progress / course length.

@@ -3,14 +3,22 @@ import * as THREE from 'three';
 const MOVE_KEYS = new Set(['KeyW', 'KeyA', 'KeyS', 'KeyD', 'KeyQ', 'KeyE']);
 const MAX_PITCH = THREE.MathUtils.degToRad(89);
 
-// Follow camera (smoothly tracks the leading marble) and a free fly camera:
-// click to steer with the mouse (pointer lock), WASD to move, Q/E up/down,
-// Shift to move faster.
+export const CAMERA_MODES = ['follow', 'free', 'pov'];
+const NEAR = { follow: 0.05, free: 0.05, pov: 0.01 };
+
+// Three camera modes:
+//  follow  smoothly tracks the leading marble
+//  free    fly camera: click to steer with the mouse (pointer lock), WASD to
+//          move, Q/E up/down, Shift to move faster
+//  pov     rides on the leading marble, looking where it is going
 export class CameraRig {
   constructor(camera, dom) {
     this.camera = camera;
     this.dom = dom;
-    this.free = false;
+    this.mode = 'follow';
+    this.povDir = new THREE.Vector3(0, 0, 1);
+    this.povUp = new THREE.Vector3(0, 1, 0);
+    this.povInit = false;
     this.focus = new THREE.Vector3();
     this.heading = new THREE.Vector3(0, 0, 1);
     this.initialised = false;
@@ -43,12 +51,19 @@ export class CameraRig {
 
   _requestFree() {
     if (this.onRequestFree) this.onRequestFree();
-    else this.setFree(true);
+    else this.setMode('free');
   }
 
-  setFree(on) {
-    this.free = on;
-    if (on) {
+  get free() {
+    return this.mode === 'free';
+  }
+
+  setMode(mode) {
+    this.mode = mode;
+    this.camera.near = NEAR[mode];
+    this.camera.updateProjectionMatrix();
+    this.povInit = false;
+    if (mode === 'free') {
       // Start from the current view direction so nothing jumps.
       const dir = new THREE.Vector3();
       this.camera.getWorldDirection(dir);
@@ -62,6 +77,26 @@ export class CameraRig {
 
   reset() {
     this.initialised = false;
+    this.povInit = false;
+  }
+
+  // Eye just above the marble, looking along its velocity (the course
+  // direction while it is nearly still), with the track's up as up so the
+  // view turns over with the marble through the loop.
+  _updatePov(dt, pov) {
+    const cam = this.camera;
+    const want = pov.vel.lengthSq() > 0.09 ? pov.vel.clone().normalize() : pov.tangent.clone().normalize();
+    const kDir = this.povInit ? 1 - Math.exp(-dt * 7) : 1;
+    const kUp = this.povInit ? 1 - Math.exp(-dt * 4) : 1;
+    this.povDir.lerp(want, kDir).normalize();
+    this.povUp.lerp(pov.up, kUp).normalize();
+    // Up must not be parallel to the view direction (e.g. dropping straight down).
+    const up = this.povUp.clone().addScaledVector(this.povDir, -this.povUp.dot(this.povDir));
+    if (up.lengthSq() > 0.01) cam.up.copy(up.normalize());
+    cam.position.copy(pov.pos).addScaledVector(cam.up, pov.radius * 1.1);
+    this.focus.copy(cam.position).addScaledVector(this.povDir, 6);
+    cam.lookAt(this.focus);
+    this.povInit = true;
   }
 
   _updateFree(dt) {
@@ -85,10 +120,15 @@ export class CameraRig {
   }
 
   // target: world position to look at; tangent: course direction there;
-  // hint: optional per-section camera placement (see CourseContext.setCamera).
-  update(dt, target, tangent, hint = null) {
+  // hint: optional per-section camera placement (see CourseContext.setCamera);
+  // pov: { pos, vel, up, tangent, radius } of the marble to ride on.
+  update(dt, target, tangent, hint = null, pov = null) {
     if (this.free) {
       this._updateFree(dt);
+      return;
+    }
+    if (this.mode === 'pov' && pov) {
+      this._updatePov(dt, pov);
       return;
     }
     const flat = new THREE.Vector3(tangent.x, 0, tangent.z);
