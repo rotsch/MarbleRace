@@ -32,6 +32,24 @@ button:hover { background: #111; color: #fff; }
 #tunables label span { float: right; color: #444; font-variant-numeric: tabular-nums; }
 #tunables label.changed { font-weight: 600; }
 #physics .note { margin: 6px 0 0; color: #666; font-size: 11px; }
+/* Progress line: each marble at its distance along the course. */
+#progress { left: 50%; transform: translateX(-50%); width: min(520px, calc(100vw - 440px)); box-sizing: border-box; }
+#leader { display: flex; align-items: center; gap: 6px; justify-content: center; margin-bottom: 8px; }
+#leader .label { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 600; }
+#leader .dot { width: 11px; height: 11px; border-radius: 50%; border: 1px solid #111; display: inline-block; }
+#leader .name { font-weight: 600; }
+#progress-line { position: relative; height: 16px; margin: 0 8px; }
+#progress-line::before { content: ''; position: absolute; left: 0; right: 0; top: 7px; height: 2px; background: #111; }
+#progress-line::after { content: ''; position: absolute; right: -1px; top: 1px; width: 2px; height: 14px; background: #111; }
+#progress-markers .marble {
+  position: absolute; top: 1px; width: 14px; height: 14px; margin-left: -7px; border-radius: 50%;
+  border: 1px solid #111; box-sizing: border-box; will-change: left;
+}
+#progress .ends { display: flex; justify-content: space-between; margin-top: 3px; font-size: 10px; color: #666; }
+@media (max-width: 900px) {
+  #progress { left: 14px; right: 14px; width: auto; transform: none; }
+  #ranking, #controls { top: 104px; }
+}
 @media (max-width: 560px) {
   #controls { top: auto; bottom: 14px; max-height: 50vh; }
 }

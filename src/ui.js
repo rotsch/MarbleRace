@@ -16,6 +16,9 @@ export class UI {
     this.free = $('free');
     this.texture = $('texture');
     this.hint = $('hint');
+    this.leader = $('leader');
+    this.markers = $('progress-markers');
+    this.markerRace = null;
     this.lastHtml = '';
 
     $('restart').addEventListener('click', () => handlers.restart(this.seed.value.trim() || '1'));
@@ -113,12 +116,43 @@ export class UI {
     handlers.free(on);
   }
 
+  // Progress line: one marker per marble at progress / course length.
+  // Markers further ahead are stacked above the ones behind.
+  _updateProgress(race, ranking) {
+    if (this.markerRace !== race) {
+      this.markerRace = race;
+      this.markers.replaceChildren(
+        ...race.marbles.map((m) => {
+          const el = document.createElement('div');
+          el.className = 'marble';
+          el.style.background = hex(m.color);
+          el.title = m.name;
+          return el;
+        })
+      );
+    }
+    const course = race.course;
+    const length = course.path[course.finishIndex ?? course.path.length - 1].s;
+    const els = this.markers.children;
+    ranking.forEach((m, rank) => {
+      const f = m.finished ? 1 : Math.min(1, Math.max(0, m.progress / length));
+      const el = els[m.index];
+      el.style.left = `${(f * 100).toFixed(2)}%`;
+      el.style.zIndex = String(ranking.length - rank);
+    });
+    const lead = ranking[0];
+    this.leader.querySelector('.label').textContent = race.finished || lead.finished ? 'Winner' : 'Leading';
+    this.leader.querySelector('.dot').style.background = hex(lead.color);
+    this.leader.querySelector('.name').textContent = lead.name;
+  }
+
   update(race) {
     const done = race.finished;
+    const ranking = race.ranking();
+    this._updateProgress(race, ranking);
     this.title.textContent = done ? 'Results' : 'Ranking';
     this.clock.textContent = done ? `Race over · seed ${race.seed}` : `${race.time.toFixed(2)} s`;
-    const html = race
-      .ranking()
+    const html = ranking
       .map(
         (m, i) =>
           `<li class="${m.finished ? 'done' : ''}"><span class="pos">${i + 1}</span>` +

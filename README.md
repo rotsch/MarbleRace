@@ -35,6 +35,7 @@ Node 18 or newer.
 | `E` / `Q` | fly up / down |
 | `Shift` | fly faster |
 | `T` or checkbox | track texture on/off: a random mosaic of every picture in `textures/` (starts off; stays white if the folder has no pictures) |
+| Progress line (top) | every marble at its distance along the course; marbles further ahead are drawn over those behind; shows the leader (the winner once someone finishes) |
 | Physics panel | marble size, bounciness, grip and rolling resistance; track bounciness and grip; rubber pad bounciness. Apply restarts the race; values are remembered in this browser |
 
 URL parameters: `?seed=42` picks the starting seed; `?layout=loop` loads one
