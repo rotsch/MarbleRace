@@ -32,6 +32,7 @@ const handlers = {
   speed: (v) => (speed = v),
   debug: (on) => view.setDebug(on),
   free: (on) => rig.setFree(on),
+  texture: (on) => view.trackTexture.setEnabled(on),
 };
 const ui = new UI(handlers);
 rig.onRequestFree = () => ui.enterFree(handlers);

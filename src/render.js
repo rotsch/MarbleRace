@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { MARBLE } from './config.js';
+import { applyTrackTexture } from './trackTexture.js';
 
 // Renderer, the boundless white space, lighting, marble meshes and the debug overlay.
 export class View {
@@ -23,6 +24,9 @@ export class View {
       surface: new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.95, metalness: 0 }),
       outline: new THREE.LineBasicMaterial({ color: 0x000000 }),
     };
+    // Pictures from the textures/ folder as a random mosaic on every course
+    // surface. Off (plain white) until switched on with T.
+    this.trackTexture = applyTrackTexture(this.materials.surface);
 
     this.scene.add(new THREE.HemisphereLight(0xffffff, 0xdcdcdc, 2.2));
     this.sun = new THREE.DirectionalLight(0xffffff, 1.6);

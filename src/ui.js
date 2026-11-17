@@ -14,6 +14,7 @@ export class UI {
     this.speed = $('speed');
     this.debug = $('debug');
     this.free = $('free');
+    this.texture = $('texture');
     this.hint = $('hint');
     this.lastHtml = '';
 
@@ -34,6 +35,7 @@ export class UI {
     this.debug.addEventListener('change', () => handlers.debug(this.debug.checked));
     this.free.addEventListener('change', () => this.setFree(this.free.checked, handlers));
     this._buildPhysics(handlers);
+    this.texture.addEventListener('change', () => this.setTexture(this.texture.checked, handlers));
     window.addEventListener('keydown', (e) => {
       if (e.key === 'b' || e.key === 'B') {
         this.debug.checked = !this.debug.checked;
@@ -41,6 +43,9 @@ export class UI {
       } else if (e.key === 'c' || e.key === 'C') {
         this.free.checked = !this.free.checked;
         this.setFree(this.free.checked, handlers);
+      } else if (e.key === 't' || e.key === 'T') {
+        this.texture.checked = !this.texture.checked;
+        this.setTexture(this.texture.checked, handlers);
       } else if (e.key === 'r' || e.key === 'R') {
         handlers.restart(this.seed.value.trim() || '1');
       }
@@ -84,6 +89,14 @@ export class UI {
     for (const s of this.sliders) {
       s.input.value = values[s.t.id];
       s.show();
+    }
+  }
+
+  async setTexture(on, handlers) {
+    const shown = await handlers.texture(on);
+    if (on && !shown) {
+      this.texture.checked = false;
+      this.hint.textContent = 'No track textures: add pictures to the textures/ folder.';
     }
   }
 

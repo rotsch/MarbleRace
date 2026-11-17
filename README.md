@@ -34,6 +34,7 @@ Node 18 or newer.
 | `W` `A` `S` `D` | fly forward / left / back / right (enters free camera) |
 | `E` / `Q` | fly up / down |
 | `Shift` | fly faster |
+| `T` or checkbox | track texture on/off: a random mosaic of every picture in `textures/` (starts off; stays white if the folder has no pictures) |
 | Physics panel | marble size, bounciness, grip and rolling resistance; track bounciness and grip; rubber pad bounciness. Apply restarts the race; values are remembered in this browser |
 
 URL parameters: `?seed=42` picks the starting seed; `?layout=loop` loads one
@@ -112,6 +113,17 @@ scripts/
 
 Each section exports `build(ctx, entryPose, opts)` and returns its exit pose,
 so the course is a chain: reorder or retune sections in `course/course.js`.
+
+## Track textures
+
+Put pictures (png, jpg or webp) in `textures/` at the project root. The game
+uses every picture there: press `T` and every course surface is covered with
+a random mosaic, one picture per square tile (one track width across), each
+tile turned by a random multiple of 90°. Add or remove pictures freely; no
+code change is needed. Pictures are cropped to a centred square, so square
+ones work best, and about 1024×1024 is plenty. The pattern is projected from
+above and the sides, so it works on every piece; tile size is `TILE` in
+`src/trackTexture.js`.
 
 ## Physics notes
 
