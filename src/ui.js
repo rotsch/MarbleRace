@@ -31,7 +31,7 @@ export class UI {
     this.debug.addEventListener('change', () => handlers.debug(this.debug.checked));
     this.free.addEventListener('change', () => this.setFree(this.free.checked, handlers));
     window.addEventListener('keydown', (e) => {
-      if (e.key === 'd' || e.key === 'D') {
+      if (e.key === 'b' || e.key === 'B') {
         this.debug.checked = !this.debug.checked;
         handlers.debug(this.debug.checked);
       } else if (e.key === 'c' || e.key === 'C') {
@@ -43,9 +43,15 @@ export class UI {
     });
   }
 
+  // Entering free mode from the camera itself (click or a movement key).
+  enterFree(handlers) {
+    this.free.checked = true;
+    this.setFree(true, handlers);
+  }
+
   setFree(on, handlers) {
     this.hint.textContent = on
-      ? 'Free camera: drag to orbit, right-drag to pan, wheel to zoom.'
+      ? 'Free camera: click to steer with the mouse (Esc releases), WASD move, E/Q up/down, Shift faster.'
       : 'Follow camera tracks the leader.';
     handlers.free(on);
   }

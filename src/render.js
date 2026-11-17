@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { MARBLE } from './config.js';
 
-// Renderer, the white room, lighting, marble meshes and the debug overlay.
+// Renderer, the boundless white space, lighting, marble meshes and the debug overlay.
 export class View {
   constructor(canvas) {
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
@@ -39,7 +39,6 @@ export class View {
     this.scene.add(this.sun, this.sun.target);
     this.sunOffset = new THREE.Vector3(7, 26, 5);
 
-    this.room = null;
     this.courseGroup = null;
     this.marbleMeshes = [];
     this.sphere = new THREE.SphereGeometry(MARBLE.radius, 40, 28);
@@ -67,7 +66,6 @@ export class View {
   // Swap in a freshly built race (course meshes + marbles + a room sized to fit).
   setRace(race) {
     if (this.courseGroup) this._disposeGroup(this.courseGroup);
-    if (this.room) this._disposeGroup(this.room);
     for (const m of this.marbleMeshes) {
       this.scene.remove(m);
       m.material.map?.dispose();
@@ -75,8 +73,6 @@ export class View {
     }
     this.courseGroup = race.course.group;
     this.scene.add(this.courseGroup);
-    this.room = this._buildRoom(race.course.bounds);
-    this.scene.add(this.room);
     this.marbleMeshes = race.marbles.map((m) => {
       const mesh = new THREE.Mesh(this.sphere, this._marbleMaterial(m.color));
       mesh.castShadow = true;
@@ -88,46 +84,6 @@ export class View {
   _disposeGroup(group) {
     this.scene.remove(group);
     group.traverse((o) => o.geometry?.dispose());
-  }
-
-  // Empty white room: floor and four walls around the course.
-  _buildRoom(bounds) {
-    const room = new THREE.Group();
-    const pad = 14;
-    const min = bounds.min, max = bounds.max;
-    const cx = (min.x + max.x) / 2, cz = (min.z + max.z) / 2;
-    const sx = max.x - min.x + pad * 2, sz = max.z - min.z + pad * 2;
-    const h = max.y + 12;
-    // Unlit white, so the room stays pure white from every angle; a separate
-    // transparent layer just above the floor carries the soft shadows.
-    const white = new THREE.MeshBasicMaterial({ color: 0xffffff });
-    const plane = (w, d, mat) => {
-      const m = new THREE.Mesh(new THREE.PlaneGeometry(w, d), mat);
-      room.add(m);
-      return m;
-    };
-    const floor = plane(sx, sz, white);
-    floor.rotation.x = -Math.PI / 2;
-    floor.position.set(cx, 0, cz);
-    const shadow = plane(sx, sz, new THREE.ShadowMaterial({ opacity: 0.17 }));
-    shadow.rotation.x = -Math.PI / 2;
-    shadow.position.set(cx, 0.01, cz);
-    shadow.receiveShadow = true;
-    const wall = (w, x, z, ry) => {
-      const m = plane(w, h, white);
-      m.position.set(x, h / 2, z);
-      m.rotation.y = ry;
-    };
-    wall(sx, cx, cz - sz / 2, 0);
-    wall(sx, cx, cz + sz / 2, Math.PI);
-    wall(sz, cx - sx / 2, cz, Math.PI / 2);
-    wall(sz, cx + sx / 2, cz, -Math.PI / 2);
-    // Thin outlines where floor meets walls, so the room reads as a room.
-    const box = new THREE.BoxGeometry(sx, h, sz);
-    const edges = new THREE.LineSegments(new THREE.EdgesGeometry(box), new THREE.LineBasicMaterial({ color: 0xcfcfcf }));
-    edges.position.set(cx, h / 2, cz);
-    room.add(edges);
-    return room;
   }
 
   // Glossy glass look, with a soft lighter swirl so rolling is visible.

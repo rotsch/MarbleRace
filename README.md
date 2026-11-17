@@ -28,8 +28,12 @@ Node 18 or newer.
 | Seed field + Restart (or `R`, or Enter in the field) | replay a race; the same seed gives exactly the same race |
 | New seed | restart with a random seed |
 | Speed slider | simulation speed 0.25x to 2x |
-| `D` or checkbox | physics debug view (draws every collider) |
-| `C` or checkbox | toggle follow camera / free orbit camera (drag, right-drag, wheel) |
+| `B` or checkbox | physics debug view (draws every collider) |
+| `C` or checkbox | toggle follow camera / free fly camera |
+| click scene | enter free camera and steer with the mouse (pointer lock, `Esc` releases) |
+| `W` `A` `S` `D` | fly forward / left / back / right (enters free camera) |
+| `E` / `Q` | fly up / down |
+| `Shift` | fly faster |
 
 URL parameters: `?seed=42` picks the starting seed; `?layout=loop` loads one
 section on its own (`pegField`, `funnel`, `loop`, `halfPipe`, `splitter`,
@@ -82,8 +86,8 @@ src/
   physics.js           world setup, fixed-timestep accumulator
   marbles.js           marble bodies and their interpolation state
   race.js              spawn, ranking, finish sensor, safety net (no DOM, runs headless)
-  render.js            renderer, white room, lights and shadows, marble meshes, debug lines
-  camera.js            follow camera and free orbit camera
+  render.js            renderer, boundless white space, lights, marble shadows, marble meshes, debug lines
+  camera.js            follow camera and free fly camera
   ui.js                overlay
   main.js              wires it together, main loop
   course/

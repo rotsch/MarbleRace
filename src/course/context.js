@@ -59,7 +59,7 @@ export class CourseContext {
   _visual(geometry, position, quaternion, edgeAngle = 25) {
     if (!this.group) return;
     const mesh = new Mesh(geometry, this.materials.surface);
-    mesh.castShadow = true;
+    mesh.castShadow = false;
     mesh.receiveShadow = true;
     const lines = new LineSegments(new EdgesGeometry(geometry, edgeAngle), this.materials.outline);
     mesh.add(lines);

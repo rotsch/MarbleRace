@@ -24,22 +24,23 @@ function restart(seed) {
   window.race = race; // handy for inspection from the console
 }
 
-const ui = new UI({
+const handlers = {
   restart,
   speed: (v) => (speed = v),
   debug: (on) => view.setDebug(on),
   free: (on) => rig.setFree(on),
-});
+};
+const ui = new UI(handlers);
+rig.onRequestFree = () => ui.enterFree(handlers);
 ui.seed.value = params.get('seed') || '1';
 restart(ui.seed.value);
 
 // Dev aid: ?cam=x,y,z,tx,ty,tz starts in free camera at a fixed viewpoint.
 if (params.get('cam')) {
   const c = params.get('cam').split(',').map(Number);
-  ui.free.checked = true;
-  rig.setFree(true);
   view.camera.position.set(c[0], c[1], c[2]);
-  rig.orbit.target.set(c[3], c[4], c[5]);
+  view.camera.lookAt(c[3], c[4], c[5]);
+  ui.enterFree(handlers);
 }
 
 const target = new THREE.Vector3();
