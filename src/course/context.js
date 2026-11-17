@@ -58,6 +58,7 @@ export class CourseContext {
 
   _physics(desc, m = {}) {
     desc.setFriction(m.friction ?? TRACK.friction).setRestitution(m.restitution ?? TRACK.restitution);
+    if (m.bounceMax) desc.setRestitutionCombineRule(this.RAPIER.CoefficientCombineRule.Max);
     return this.world.createCollider(desc, this.body);
   }
 
@@ -117,6 +118,23 @@ export class CourseContext {
   // Mesh + outline only, no collider.
   addVisual(geometry, position, quaternion, edgeAngle) {
     this._visual(geometry, position, quaternion, edgeAngle);
+  }
+
+  // Decoration (banners, gantries, grandstands): a mesh with its own
+  // material and no collider, outlined only when `outline` is an edge angle.
+  // Returns the mesh, or null when running headless.
+  addDecor(geometry, position, quaternion, { material, outline = null } = {}) {
+    if (!this.group) {
+      geometry.dispose();
+      return null;
+    }
+    const mesh = new Mesh(geometry, material ?? this.materials.surface);
+    if (outline !== null) mesh.add(new LineSegments(new EdgesGeometry(geometry, outline), this.materials.outline));
+    if (position) mesh.position.copy(position);
+    if (quaternion) mesh.quaternion.copy(quaternion);
+    mesh.userData.decor = true;
+    this.group.add(mesh);
+    return mesh;
   }
 
   addHull(points, material) {

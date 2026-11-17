@@ -31,7 +31,8 @@ export class CameraRig {
     this.sensitivity = 0.0022;
     this.onRequestFree = null; // set by the UI so the checkbox stays in sync
 
-    dom.addEventListener('click', () => {
+    dom.addEventListener('click', (e) => {
+      if (this.onClick?.(e)) return; // handled elsewhere (shooting marbles)
       if (!this.free) this._requestFree();
       if (document.pointerLockElement !== dom) dom.requestPointerLock?.();
     });

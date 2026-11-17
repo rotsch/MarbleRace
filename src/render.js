@@ -2,6 +2,8 @@ import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { MARBLE } from './config.js';
 import { applyTrackTexture } from './trackTexture.js';
+import { NeonTheme } from './theme.js';
+import { setDecorLook } from './course/decor.js';
 
 // Renderer, the boundless white space, lighting, marble meshes and the debug overlay.
 export class View {
@@ -21,12 +23,14 @@ export class View {
     this.materials = {
       surface: new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.95, metalness: 0 }),
       outline: new THREE.LineBasicMaterial({ color: 0x000000 }),
+      envMap: this.envMap, // for glossy decoration (spectator marbles)
     };
     // Pictures from the textures/ folder as a random mosaic on every course
     // surface. Off (plain white) until switched on with T.
     this.trackTexture = applyTrackTexture(this.materials.surface);
 
-    this.scene.add(new THREE.HemisphereLight(0xffffff, 0xdcdcdc, 2.2));
+    this.hemi = new THREE.HemisphereLight(0xffffff, 0xdcdcdc, 2.2);
+    this.scene.add(this.hemi);
     this.sun = new THREE.DirectionalLight(0xffffff, 1.6);
     this.scene.add(this.sun, this.sun.target);
     this.sunOffset = new THREE.Vector3(7, 26, 5);
@@ -51,6 +55,19 @@ export class View {
     this.debugLines.visible = false;
     this.scene.add(this.debugLines);
 
+    // Mesh structure overlay (M): every triangle edge of the course meshes.
+    this.wireframe = false;
+    this.wireMaterials = {
+      track: new THREE.LineBasicMaterial({ color: 0x1e63e9, transparent: true, opacity: 0.55 }),
+      decor: new THREE.LineBasicMaterial({ color: 0xe0201b, transparent: true, opacity: 0.45 }),
+    };
+    this.meshStats = null;
+
+    // Looks (T): 'white' (default), 'neon' (see theme.js), 'pictures'.
+    this.look = 'white';
+    this.theme = new NeonTheme(this.scene);
+    this.clock = new THREE.Clock();
+
     window.addEventListener('resize', () => this.resize());
     this.resize();
   }
@@ -70,8 +87,14 @@ export class View {
       m.material.map?.dispose();
       m.material.dispose();
     }
+    for (const mesh of this.shotMeshes?.values() ?? []) this.scene.remove(mesh);
+    this.shotMeshes?.clear();
     this.courseGroup = race.course.group;
     this.scene.add(this.courseGroup);
+    this.theme.setCourse(race.course);
+    this._applyTrackMaterial();
+    this.meshStats = null;
+    if (this.wireframe) this._addWireframe();
     if (!this.sphere || this.sphere.parameters.radius !== MARBLE.radius) {
       this.sphere?.dispose();
       this.sphere = new THREE.SphereGeometry(MARBLE.radius, 40, 28);
@@ -186,8 +209,68 @@ export class View {
     }
   }
 
+  // Meshes for marbles shot from the camera: added for new shots, dropped for
+  // removed ones, placed straight from the physics state.
+  updateShots(race) {
+    this.shotMeshes ??= new Map();
+    this.shotMaterials ??= new Map();
+    for (const [shot, mesh] of this.shotMeshes) {
+      if (race.shots.get(shot.collider.handle) !== shot) {
+        this.scene.remove(mesh);
+        this.shotMeshes.delete(shot);
+      }
+    }
+    for (const shot of race.shots.values()) {
+      let mesh = this.shotMeshes.get(shot);
+      if (!mesh) {
+        let mat = this.shotMaterials.get(shot.color);
+        if (!mat) this.shotMaterials.set(shot.color, (mat = this._marbleMaterial(shot.color)));
+        mesh = new THREE.Mesh(this.sphere, mat);
+        this.scene.add(mesh);
+        this.shotMeshes.set(shot, mesh);
+      }
+      const t = shot.body.translation(), r = shot.body.rotation();
+      mesh.position.set(t.x, t.y, t.z);
+      mesh.quaternion.set(r.x, r.y, r.z, r.w);
+    }
+  }
+
   setDebug(on) {
     this.debugLines.visible = on;
+  }
+
+  // Show the triangles of every course mesh (track pieces blue, decoration
+  // red). Returns { meshes, triangles, vertices } of the course.
+  setWireframe(on) {
+    this.wireframe = on;
+    if (on) this._addWireframe();
+    else this.courseGroup?.traverse((o) => o.userData.wire && (o.visible = false));
+    return this.meshStats;
+  }
+
+  _addWireframe() {
+    const stats = { meshes: 0, triangles: 0, vertices: 0 };
+    const meshes = [];
+    this.courseGroup.traverse((o) => o.isMesh && meshes.push(o));
+    for (const mesh of meshes) {
+      const g = mesh.geometry;
+      const copies = mesh.isInstancedMesh ? mesh.count : 1;
+      stats.meshes++;
+      stats.vertices += g.attributes.position.count * copies;
+      stats.triangles += ((g.index ? g.index.count : g.attributes.position.count) / 3) * copies;
+      // An instanced mesh draws its one geometry many times; a wireframe
+      // child would show only a single copy at the origin, so leave it out.
+      if (mesh.isInstancedMesh) continue;
+      let wire = mesh.children.find((c) => c.userData.wire);
+      if (!wire) {
+        wire = new THREE.LineSegments(new THREE.WireframeGeometry(g), mesh.userData.decor ? this.wireMaterials.decor : this.wireMaterials.track);
+        wire.userData.wire = true;
+        wire.renderOrder = 5;
+        mesh.add(wire);
+      }
+      wire.visible = true;
+    }
+    this.meshStats = stats;
   }
 
   updateDebug(world) {
@@ -198,7 +281,28 @@ export class View {
     g.setAttribute('color', new THREE.BufferAttribute(colors, 4));
   }
 
+  // Switch the look. Resolves to false when the pictures look was asked for
+  // but there are no pictures.
+  async setLook(look) {
+    this.look = look;
+    const neon = look === 'neon';
+    this.theme.setEnabled(neon, this);
+    setDecorLook(neon ? 'neon' : 'white');
+    this._applyTrackMaterial();
+    const shown = await this.trackTexture.setEnabled(look === 'pictures');
+    return look !== 'pictures' || shown > 0;
+  }
+
+  // Course surfaces (not decoration) wear the neon material in the neon look.
+  _applyTrackMaterial() {
+    const mat = this.look === 'neon' ? this.theme.track : this.materials.surface;
+    this.courseGroup?.traverse((o) => {
+      if (o.isMesh && !o.userData.decor && !o.isInstancedMesh) o.material = mat;
+    });
+  }
+
   render(focus) {
+    this.theme.update(Math.min(this.clock.getDelta(), 0.1), this.camera);
     this.sun.target.position.copy(focus);
     this.sun.position.copy(focus).add(this.sunOffset);
     this.renderer.render(this.scene, this.camera);

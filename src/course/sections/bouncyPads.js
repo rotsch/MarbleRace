@@ -1,6 +1,6 @@
 import { Vector3, Quaternion } from 'three';
 import { tracePath, makeFrame, framePoint, frameQuat, lastFrame, deg } from '../frame.js';
-import { buildTrack } from '../trackBuilder.js';
+import { buildTrack, widthStops } from '../trackBuilder.js';
 import { rejoin } from './rejoin.js';
 import { RUBBER, TRACK } from '../../config.js';
 
@@ -17,13 +17,15 @@ export function build(ctx, entry, opts = {}) {
   const reach = opts.reach ?? 2.1; // forward distance from approach end to upper track
   const padLen = opts.padLen ?? 1.5, padWidth = 1.3, padStart = opts.padStart ?? 0.6;
 
+  // The approach opens out to nearly the pad's width, so marbles reach the
+  // pad spread across it instead of in single file.
   const approach = tracePath(entry, [{ len: 1.3, pitch: -deg(2) }]);
-  buildTrack(ctx, approach);
+  buildTrack(ctx, approach, { width: widthStops([[0, TRACK.width], [0.9, 1.1]]) });
   const a = makeFrame(lastFrame(approach).pos, entry.yaw, 0);
   const F = a.F;
 
   // Thin rubber skin on an ordinary base, so only the top face is rubber.
-  const rubber = { restitution: RUBBER.restitution, friction: RUBBER.friction };
+  const rubber = { restitution: RUBBER.restitution, friction: RUBBER.friction, bounceMax: true };
   const tilt = new Quaternion().setFromAxisAngle(new Vector3(1, 0, 0), -(opts.tilt ?? deg(12)));
   const quat = frameQuat(a).multiply(tilt);
   const up = new Vector3(0, 1, 0).applyQuaternion(quat);
@@ -45,12 +47,12 @@ export function build(ctx, entry, opts = {}) {
   ctx.addPathPoint(upper.clone().addScaledVector(F, -0.1));
   ctx.setCamera(null);
   const { exit, lowFrames, mainFrames } = rejoin(ctx, {
-    main: { pos: upper, yaw: a.yaw, width: 1.5, wideLen: 2.6, rail: 0.5 },
+    main: { pos: upper, yaw: a.yaw, width: 2.2, wideLen: 3.0, rail: 0.5 },
     low: { pos: lowStart, width: 3.0, wideLen: back + reach + 1.8, lead: back + reach + 0.8, rail: 0.7 },
     len: opts.len ?? 9,
   });
   ctx.addBoxAt(lowFrames[0], { x: 0, y: 0.31, z: -0.02 }, 1.5 + TRACK.railThickness, 0.35, 0.02);
-  ctx.addSensorAt('pads: reached upper track', mainFrames[0], { x: 0, y: 0.3, z: 1.9 }, 0.5, 0.35, 0.05);
+  ctx.addSensorAt('pads: reached upper track', mainFrames[0], { x: 0, y: 0.3, z: 1.9 }, 1.1, 0.35, 0.05);
   const mid = lowFrames[Math.floor(lowFrames.length * 0.8)];
   ctx.addSensorAt('pads: lower path', mid, { x: 0, y: 0.2, z: 0 }, 0.4, 0.25, 0.05);
   return exit;

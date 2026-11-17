@@ -28,14 +28,18 @@ Node 18 or newer.
 | Seed field + Restart (or Enter in the field) | replay a race; the same seed gives exactly the same race |
 | `R` | back to the start line and wait; `R` again starts the race (with the countdown) |
 | New seed | restart with a random seed |
-| Speed slider | simulation speed 0.25x to 2x |
-| `B` or checkbox | physics debug view (draws every collider) |
+| Speed slider, `←` / `→` | simulation speed 0.1x to 4x; the arrow keys step through 0.1, 0.25, 0.5, 0.75, 1, 1.5, 2, 3, 4; `←` at 0.1x pauses, and while paused either arrow resumes one step slower / faster than before |
+| `Space` or Pause button | pause / resume: physics, race clock and countdown stop, the camera still moves |
+| `B` or checkbox | debug: physics colliders (draws every collider) |
+| `M` or checkbox | debug: mesh wireframe, every triangle of the course meshes (track blue, decoration red), with mesh / triangle / vertex counts |
+| `F`, click, or checkbox | debug: shoot marbles from the camera (click aims at the cursor, at the screen centre while the mouse steers the free camera; `F` aims at the last cursor position). Shot marbles are white, black, grey or brown, are not ranked or rescued, fly only while the race runs, and vanish on the room floor or at the finish line |
 | `C` or Camera menu | cycle the camera: follow the leader → free fly → leader's view (rides on the leading marble, looking along the track a little ahead; it switches marbles once a new leader is 2.5 cm ahead) |
 | click scene | enter free camera and steer with the mouse (pointer lock, `Esc` releases) |
 | `W` `A` `S` `D` | fly forward / left / back / right (enters free camera) |
 | `Q` / `E` | fly up / down |
 | `Shift` | fly faster |
-| `T` or checkbox | track texture on/off: a random mosaic of every picture in `textures/` (starts off; stays white if the folder has no pictures) |
+| Speaker button / volume slider (bottom left), `N` | sound on / off and volume (remembered by the browser). All sounds are synthesised with Web Audio: rolling (louder and brighter with speed, silent in the air), hits on the track, glass clicks between marbles, boings on the rubber pads, start-light beeps, a bell per finisher with a cheering crowd and a fanfare for the winner, a crowd of babbling voices at the finish (it wakes as the leader nears the line and falls silent once the last marble is home), safety-net nudges and rescues, shots, clicks and pause. World sounds come from where they happen, heard from the camera |
+| `T` or Look menu | cycle the look: White (default) → Neon dusk (evening sky with a striped sun and stars, an endless glowing grid floor with light pulses, a rainbow track whose colour follows height, candy-striped floors, neon gantries and stands, low-poly shapes drifting around the course) → Picture mosaic (every picture in `textures/` as a random mosaic; skipped if the folder has none) |
 | Start race (button) | the page opens with the marbles waiting on the start line; every start (this button, a second `R`, Restart, New seed, physics Apply) counts down 3, 2, 1 first |
 | Progress line (top) | every marble at its distance along the course; marbles further ahead are drawn over those behind; shows the leader (the winner once someone finishes) |
 | Physics panel | marble size, bounciness, grip and rolling resistance; track bounciness and grip; rubber pad bounciness. Apply restarts the race; values are remembered in this browser |
@@ -49,7 +53,7 @@ section on its own (`pegField`, `funnel`, `loop`, `halfPipe`, `splitter`,
 
 Top to bottom, linked by sloped, curving track:
 
-1. **Start ramp**: 8 seeded spawn slots.
+1. **Start ramp**: 8 seeded spawn slots on a painted grid, under a gantry whose five lights count down and turn green on "Go!".
 2. **Peg field**: tilted Plinko board of cylinders.
 3. **Funnel**: marbles enter tangentially, circle, drop through the centre hole.
 4. **Loop-the-loop** after a steep drop, with a bypass (see below).
@@ -64,7 +68,7 @@ Top to bottom, linked by sloped, curving track:
 13. **Big jump**: a long steep run that widens, a short upward kicker, and a big funnel that catches the marbles in the air. The funnel drains into a closed pipe that goes straight down, bends level, turns sideways and comes out on ordinary track.
 14. **Winding 2**: another long run of banked bends.
 15. **Bottleneck**: narrows to a single-marble throat.
-16. **Finish**: sensor collider, then a walled basin.
+16. **Finish**: chequered line and finish gantry over the sensor, red and white kerbs, grandstands of spectator marbles either side, then a walled basin. Start and finish dressing is decoration only (no colliders, skipped headless), so it changes no race result.
 
 S-bends (two sharp unbanked corners) sit between the fast sections and act
 as brakes.

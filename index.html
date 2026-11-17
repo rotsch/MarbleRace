@@ -11,10 +11,23 @@
     <div id="ui">
       <div id="start-overlay" hidden><button id="start-race">Start race</button></div>
       <div id="countdown" hidden></div>
+      <div id="crosshair" hidden></div>
+      <div id="paused" hidden>❚❚ Paused <span>Space to resume</span></div>
       <section id="progress" class="panel">
         <div id="leader"><span class="label">Leading</span> <span class="dot"></span> <span class="name">–</span></div>
         <div id="progress-line"><div id="progress-markers"></div></div>
         <div class="ends"><span>Start</span><span>Finish</span></div>
+      </section>
+      <section id="sound" class="panel">
+        <button id="sound-toggle" title="Sound on / off (N)" aria-label="Sound on / off">
+          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+            <path d="M3 9h4l5-4v14l-5-4H3z" fill="currentColor" />
+            <path class="wave1" d="M15.5 9.5a3.5 3.5 0 0 1 0 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+            <path class="wave2" d="M18 7a7 7 0 0 1 0 10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+            <path class="mute" d="M16 9.5l5 5m0-5l-5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+          </svg>
+        </button>
+        <input id="volume" type="range" min="0" max="1" step="0.01" aria-label="Volume" title="Volume" />
       </section>
       <section id="ranking" class="panel">
         <h2 id="ranking-title">Ranking</h2>
@@ -27,10 +40,17 @@
           <button id="restart">Restart</button>
           <button id="random" title="New random seed">New seed</button>
         </div>
-        <label>Speed <span id="speed-value">1.00x</span>
-          <input id="speed" type="range" min="0.25" max="2" step="0.05" value="1" />
+        <label>Speed (← →, Space pauses) <span id="speed-value">1.00x</span>
+          <input id="speed" type="range" min="0.1" max="4" step="0.05" value="1" />
         </label>
-        <label class="check"><input id="debug" type="checkbox" /> Physics debug (B)</label>
+        <button id="pause" title="Pause or resume the simulation (Space)">Pause</button>
+        <fieldset id="debug-options">
+          <legend>Debug</legend>
+          <label class="check"><input id="debug" type="checkbox" /> Physics colliders (B)</label>
+          <label class="check"><input id="wireframe" type="checkbox" /> Mesh wireframe (M)</label>
+          <p id="mesh-stats" hidden></p>
+          <label class="check" title="Click the scene or press F to shoot a marble from the camera"><input id="shooting" type="checkbox" /> Shoot marbles (click / F)</label>
+        </fieldset>
         <label>Camera (C)
           <select id="camera">
             <option value="follow">Follow leader</option>
@@ -38,7 +58,13 @@
             <option value="pov">Leader's view</option>
           </select>
         </label>
-        <label class="check"><input id="texture" type="checkbox" /> Track texture (T)</label>
+        <label>Look (T)
+          <select id="look">
+            <option value="white">White</option>
+            <option value="neon">Neon dusk</option>
+            <option value="pictures">Picture mosaic</option>
+          </select>
+        </label>
         <p id="hint">Follow camera tracks the leader.</p>
         <details id="physics">
           <summary>Physics</summary>

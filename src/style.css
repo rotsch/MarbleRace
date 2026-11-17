@@ -59,6 +59,30 @@ button:hover { background: #111; color: #fff; }
   text-shadow: 0 0 18px #fff, 0 0 4px #fff; font-variant-numeric: tabular-nums;
 }
 #countdown.pop { animation: pop 0.35s ease-out; }
+#paused {
+  position: absolute; left: 50%; bottom: 28px; transform: translateX(-50%);
+  padding: 8px 16px; border: 1px solid #111; background: rgba(255, 255, 255, 0.92);
+  font-size: 16px; font-weight: 700; letter-spacing: 0.06em;
+}
+#paused span { margin-left: 8px; font-size: 11px; font-weight: 400; color: #666; letter-spacing: 0; }
+#paused[hidden], #mesh-stats[hidden], #crosshair[hidden] { display: none; }
+/* Sound: speaker button (mute) and volume slider, bottom left. */
+#sound { top: auto; bottom: 14px; left: 14px; display: flex; align-items: center; gap: 8px; padding: 6px 10px 6px 6px; }
+#sound-toggle { flex: none; display: flex; padding: 4px; border: none; background: none; color: #111; }
+#sound-toggle:hover { background: #eee; color: #111; }
+#sound #volume { width: 96px; }
+#sound .mute { display: none; }
+#sound.muted .mute { display: inline; }
+#sound.muted .wave1, #sound.muted .wave2, #sound.low .wave2 { display: none; }
+#sound.muted #volume { opacity: 0.4; }
+#crosshair {
+  position: absolute; left: 50%; top: 50%; width: 18px; height: 18px; margin: -9px 0 0 -9px;
+  background: linear-gradient(#111, #111) center / 2px 100% no-repeat, linear-gradient(#111, #111) center / 100% 2px no-repeat;
+  opacity: 0.6;
+}
+#debug-options { margin: 0; padding: 4px 8px 6px; border: 1px solid #ccc; display: flex; flex-direction: column; gap: 4px; }
+#debug-options legend { padding: 0 4px; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 600; }
+#mesh-stats { margin: 0; color: #666; font-size: 11px; font-variant-numeric: tabular-nums; }
 @keyframes pop { from { transform: translate(-50%, -50%) scale(1.5); opacity: 0.3; } }
 @media (max-width: 900px) {
   #progress { left: 14px; right: 14px; width: auto; transform: none; }
