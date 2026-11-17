@@ -19,10 +19,15 @@ export function build(ctx, entry, opts = {}) {
   const recovery = lip.pos.clone().addScaledVector(F, -0.35).setY(lip.pos.y - drop - 0.75);
   const { exit, lowFrames } = rejoin(ctx, {
     main: { pos: landing, yaw: lip.yaw, width: 1.1, rail: 0.42 },
-    low: { pos: recovery, width: 1.7, wideLen: gap + 1.5, lead: gap + 0.6, rail: 0.62 },
+    low: {
+      pos: recovery, dead: true, width: 2.6, wideLen: gap + 1.2, taper: 2.2, lead: gap + 0.6,
+      // Tall walls only under the gap. Further on the catch track crosses
+      // overhead and tall walls would poke up through its floor.
+      rail: (d) => (d < gap + 0.8 ? 1.0 : 0.3),
+    },
     len: opts.len ?? 7,
   });
-  ctx.addBoxAt(lowFrames[0], { x: 0, y: 0.29, z: -0.02 }, 0.85 + TRACK.railThickness, 0.33, 0.02);
+  ctx.addBoxAt(lowFrames[0], { x: 0, y: 0.48, z: -0.02 }, 1.3 + TRACK.railThickness, 0.52, 0.02);
   ctx.addSensorAt('drop: caught', lip, { x: 0, y: -drop + 0.2, z: gap + 1.3 }, 0.6, 0.3, 0.05);
   const mid = lowFrames[Math.floor(lowFrames.length * 0.75)];
   ctx.addSensorAt('drop: recovery path', mid, { x: 0, y: 0.2, z: 0 }, 0.4, 0.25, 0.05);

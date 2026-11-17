@@ -1,7 +1,7 @@
 import { Vector3 } from 'three';
 import { tracePath, sShift, pathLength, lastFrame } from '../frame.js';
 import { buildTrack, widthStops } from '../trackBuilder.js';
-import { TRACK } from '../../config.js';
+import { TRACK, DEAD } from '../../config.js';
 
 export const BRANCH_OFFSET = 0.5; // side-by-side branches sit this far from the merge centre line
 const MERGE_WIDTH = 2 * BRANCH_OFFSET + TRACK.width;
@@ -10,7 +10,7 @@ const MERGE_WIDTH = 2 * BRANCH_OFFSET + TRACK.width;
 export function merge(ctx, center, opts = {}) {
   const len = opts.len ?? 1.7;
   const frames = tracePath(center, [{ len, pitch: opts.pitch ?? -0.08 }]);
-  buildTrack(ctx, frames, { width: widthStops([[0, MERGE_WIDTH], [len, TRACK.width]]), rail: 0.3, path: opts.path });
+  buildTrack(ctx, frames, { width: widthStops([[0, MERGE_WIDTH], [len, TRACK.width]]), rail: 0.5, path: opts.path });
   return lastFrame(frames);
 }
 
@@ -47,7 +47,8 @@ export function rejoin(ctx, { main, low, len, lowPitch = 0.05, mainSide }) {
   const lowWide = low.wideLen ?? 0;
   const lowFrames = tracePath({ pos: low.pos, yaw, pitch: -lowPitch }, lowSegs);
   buildTrack(ctx, lowFrames, {
-    width: widthStops([[0, low.width ?? TRACK.width], [lowWide, low.width ?? TRACK.width], [lowWide + 1.3, TRACK.width]]),
+    width: widthStops([[0, low.width ?? TRACK.width], [lowWide, low.width ?? TRACK.width], [lowWide + (low.taper ?? 1.3), TRACK.width]]),
+    material: low.dead ? DEAD : undefined,
     rail: typeof low.rail === 'function' ? low.rail : (d) => (d < lowWide + 0.6 ? low.rail ?? 0.3 : 0.3),
     path: false,
   });

@@ -123,7 +123,7 @@ export class Race {
     m.rescues++;
     m.anchor = { x: pos.x, y: pos.y, z: pos.z };
     m.anchorTime = this.time;
-    this.log.push({ time: this.time, marble: m.name, type: 'rescue', section: p.section });
+    this.log.push({ time: this.time, marble: m.name, type: 'rescue', section: p.section, s: p.s });
   }
 
   // Finished marbles first (by place), then by progress along the course.

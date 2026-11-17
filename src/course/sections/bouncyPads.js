@@ -39,7 +39,7 @@ export function build(ctx, entry, opts = {}) {
   const upper = a.pos.clone().addScaledVector(F, reach).setY(a.pos.y + rise);
   const { exit, lowFrames, mainFrames } = rejoin(ctx, {
     main: { pos: upper, yaw: a.yaw, width: 1.5, wideLen: 2.6, rail: 0.5 },
-    low: { pos: lowStart, width: 3.0, wideLen: back + reach + 1.8, lead: back + reach + 0.8, rail: 0.7 },
+    low: { pos: lowStart, dead: true, width: 3.0, wideLen: back + reach + 1.8, lead: back + reach + 0.8, rail: 0.7 },
     len: opts.len ?? 9,
   });
   ctx.addBoxAt(lowFrames[0], { x: 0, y: 0.31, z: -0.02 }, 1.5 + TRACK.railThickness, 0.35, 0.02);

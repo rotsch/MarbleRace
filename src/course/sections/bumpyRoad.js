@@ -6,7 +6,7 @@ import { TRACK } from '../../config.js';
 // Washboard: a row of low rounded speed bumps (cylinders lying across the
 // track, mostly sunk into the floor) that make marbles hop.
 export function build(ctx, entry, opts = {}) {
-  const len = opts.len ?? 4.2;
+  const len = opts.len ?? 3.4;
   const frames = tracePath(entry, [{ len, pitch: opts.pitch ?? -0.3 }]);
   buildTrack(ctx, frames, { rail: 0.36 });
   // Each bump is the top of a large cylinder poking 15 mm through the floor.
