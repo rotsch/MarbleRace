@@ -19,7 +19,6 @@ export function createWorld(RAPIER) {
   world.timestep = PHYSICS.timestep;
   world.integrationParameters.numSolverIterations = PHYSICS.solverIterations;
   world.integrationParameters.numInternalPgsIterations = PHYSICS.pgsIterations;
-  world.integrationParameters.contact_natural_frequency = PHYSICS.contactFrequency;
   return world;
 }
 

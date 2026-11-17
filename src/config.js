@@ -7,16 +7,16 @@ export const WORLD_SCALE = 10;
 
 export const PHYSICS = {
   gravity: -9.81 * WORLD_SCALE,
-  timestep: 1 / 120,
-  maxSubsteps: 8, // per rendered frame, avoids the spiral of death
+  // Small enough that a marble moves less than its radius per step even at
+  // 30 units/s, so it cannot pass through the track without CCD (see below).
+  timestep: 1 / 480,
+  maxSubsteps: 48, // per rendered frame, avoids the spiral of death
   maxFrameTime: 0.1,
   // Solver settings chosen from measurements (see README, "Physics notes"):
   // with more than one solver substep Rapier lets a fast-spinning ball sink
   // into the surface it rolls on, so use one substep and a few PGS sweeps.
   solverIterations: 1,
   pgsIterations: 4,
-  // Contact stiffness in Hz. The default 30 is too soft for 10x gravity.
-  contactFrequency: 60,
 };
 
 export const MARBLE = {
@@ -27,7 +27,11 @@ export const MARBLE = {
   friction: 0.35,
   angularDamping: 0.08, // stands in for rolling resistance
   linearDamping: 0.0,
-  ccd: true,
+  // No CCD: on trimesh tracks Rapier's CCD halts a rolling marble at internal
+  // triangle edges while its velocity keeps growing, which invents energy
+  // (marbles shot into the loop at 2.4x the energy physics allows). The small
+  // timestep keeps marbles from tunnelling instead. See README.
+  ccd: false,
 };
 
 export const TRACK = {

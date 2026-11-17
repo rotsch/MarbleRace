@@ -1,10 +1,11 @@
 // Headless course check: races several seeds without rendering and reports
 // whether every marble finishes, how long each section takes, and whether the
-// safety net (nudge / rescue) ever had to step in.
+// safety net (nudge / rescue) ever had to step in. Also audits energy: one
+// marble alone on the course may only ever lose energy.
 //   node scripts/sim.mjs [--seeds 10] [--max 240] [--layout full|loop|bottleneck|...] [--quiet] [--verbose]
 import RAPIER from '@dimforge/rapier3d-compat';
 import { Race } from '../src/race.js';
-import { PHYSICS } from '../src/config.js';
+import { PHYSICS, MARBLE } from '../src/config.js';
 import { initPhysics } from '../src/physics.js';
 
 const arg = (name, def) => {
@@ -96,6 +97,51 @@ for (const s of first.sections)
   console.log(`  ${s.name.padEnd(16)} ${(totals[s.name] || 0).toFixed(2).padStart(7)} s ${((spSum[s.name] || 0) / (spN[s.name] || 1)).toFixed(1).padStart(10)} ${(spMax[s.name] || 0).toFixed(1).padStart(11)}`);
 console.log(`route counts over ${list.length * 8} marbles:`, counters);
 console.log('safety-net incidents:', Object.keys(incidents).length ? incidents : 'none');
+
+// Energy audit: run one marble alone (no marble-to-marble hits) and sum every
+// step in which its energy (motion + spin + height) goes up. A real ball only
+// loses energy; the threshold allows for integration noise. Before the CCD fix
+// this was ~1500 J/kg, mostly on the ramp into the loop and the bouncy pads.
+function energyAudit(seed, keep) {
+  const race = new Race(RAPIER, seed, null, layout);
+  race.marbles.forEach((m, i) => {
+    if (i === keep) return;
+    m.finished = true;
+    m.body.setBodyType(RAPIER.RigidBodyType.Fixed, false);
+    m.body.setTranslation({ x: 1000 + i, y: 500, z: 1000 }, false);
+  });
+  const m = race.marbles[keep], g = -PHYSICS.gravity, R = MARBLE.radius;
+  const energy = () => {
+    const v = m.body.linvel(), w = m.body.angvel();
+    return 0.5 * (v.x ** 2 + v.y ** 2 + v.z ** 2) + 0.2 * R * R * (w.x ** 2 + w.y ** 2 + w.z ** 2) + g * m.body.translation().y;
+  };
+  const bySection = {};
+  let prev = energy(), total = 0;
+  while (!m.finished && race.time < maxTime) {
+    const incidents = race.log.length;
+    race.step();
+    const e = energy(), d = e - prev;
+    prev = e;
+    if (race.log.length > incidents || d <= 0.5) continue; // safety-net moves are not physics
+    const s = race.course.path[m.pathIndex].section;
+    bySection[s] = (bySection[s] || 0) + d;
+    total += d;
+  }
+  race.dispose();
+  return { total, bySection };
+}
+let worst = { total: -1 };
+for (const keep of [0, 3, 6]) {
+  const r = energyAudit(list[0], keep);
+  if (r.total > worst.total) worst = r;
+}
+const top = Object.entries(worst.bySection).sort((a, b) => b[1] - a[1]).slice(0, 3);
+const energyOk = worst.total < 50;
+console.log(
+  `energy audit (single marble, ${list[0]}): invented ${worst.total.toFixed(1)} J/kg ${energyOk ? '(ok, < 50)' : '(FAIL, >= 50)'}` +
+    (top.length ? `  worst: ${top.map(([k, v]) => `${k} ${v.toFixed(1)}`).join(', ')}` : '')
+);
+ok &&= energyOk;
 
 // Determinism: the same seed must reproduce the same result exactly.
 const again = run(list[0]);

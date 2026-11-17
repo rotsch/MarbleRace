@@ -111,21 +111,24 @@ All of this is in `src/config.js`.
 
 - **Scale**: `WORLD_SCALE = 10`. A 16 mm marble has radius 0.08 units and
   gravity is 98.1, so motion has real-size timing.
-- **Marbles**: dynamic balls with CCD, density 2.5, restitution 0.55,
-  friction 0.35, angular damping 0.08 (stand-in for rolling resistance).
-- **Timestep**: fixed 1/120 s with an accumulator, at most 8 substeps per
+- **Marbles**: dynamic balls without CCD (see below), density 2.5,
+  restitution 0.55, friction 0.35, angular damping 0.08 (stand-in for
+  rolling resistance).
+- **Timestep**: fixed 1/480 s with an accumulator, at most 48 substeps per
   frame, render positions interpolated between the last two physics states.
   The speed slider only changes how fast the accumulator fills.
 - **Track surfaces** are trimesh colliders (`FIX_INTERNAL_EDGES`); pegs,
   bumps, pads, wedge and bottleneck walls are cylinders, boxes and a convex hull.
 
-Three things I found by measurement that you should know before changing them:
+Four things I found by measurement that you should know before changing them:
 
 1. **Rapier is pinned to 0.19.3.** Versions 0.20 and later clamp angular
    velocity to a quarter turn per step. At 1/120 s that stops a marble of this
    size from rolling faster than about 7.5 units/s (0.75 m/s real); above
    that it skids and loses speed. 0.19.3 is the newest version without the
-   clamp. To use a newer Rapier you would need a much smaller timestep.
+   clamp. At the current 1/480 s step the clamp would sit near 30 units/s,
+   above the course's top speed, so upgrading may now be possible, but it is
+   untested.
 2. **`solverIterations` is 1** (with 4 PGS iterations). With more solver
    substeps, a fast-spinning ball sinks visibly into whatever it rolls on
    (about 20% of its radius at 12 units/s), which also made every joint
@@ -133,6 +136,19 @@ Three things I found by measurement that you should know before changing them:
 3. **Track joints**: each track piece starts 5 mm lower and wider than
    nominal and eases back, so a marble crossing a joint steps down onto a
    face. Flush joints between separate trimesh colliders kick marbles upward.
+4. **No CCD, small timestep.** With CCD on, Rapier halts a marble rolling
+   over a trimesh at the internal triangle edges, but its velocity keeps
+   growing under gravity, so the marble gains energy that later shows as
+   sudden speed. At 1/120 s with CCD, a single marble picked up about
+   2,000 J/kg on the course: it reached the foot of the loop at 26.5 units/s
+   where physics allows about 17, and the jumps and the loop had been tuned
+   on that free energy. Turning CCD off removes it. The timestep is 1/480 s so
+   that marbles still cannot pass through the track: at 30 units/s a marble
+   moves 0.06 units per step, under its 0.08 radius. (At 1/120 s without
+   CCD, marbles fell through and needed 49 rescues in 64 races. Rapier's soft
+   CCD avoided both problems, but it braked marbles so much that none made
+   the loop.) `npm run physics-check` and `npm run sim` both fail if the
+   energy gain comes back.
 
 The bouncy pad uses restitution 1.0 on a tilted surface: it converts forward
 speed into height rather than adding energy. (Restitution above 1 worked too,
@@ -143,7 +159,8 @@ but a marble dropping straight down on it gained energy on every bounce.)
 `npm run sim -- --seeds 30` races 30 seeds headless with the same course and
 physics code the browser uses. It fails if any marble does not finish, prints
 time and speed per section, how many marbles took each route, every safety-net
-incident, and checks that running the same seed twice gives identical results.
+incident, audits that a single marble never gains energy, and checks that
+running the same seed twice gives identical results.
 
 `npm run sim -- --layout bottleneck --seeds 150` stress-tests one section with
 all 8 marbles arriving together.

@@ -14,7 +14,7 @@ import { BOUNCY, TRACK } from '../../config.js';
 export function build(ctx, entry, opts = {}) {
   const fall = opts.fall ?? 0.5; // approach track down to the pad
   const rise = opts.rise ?? 0.22; // upper track above the approach track
-  const reach = opts.reach ?? 2.3; // forward distance from approach end to upper track
+  const reach = opts.reach ?? 2.1; // forward distance from approach end to upper track
   const padLen = opts.padLen ?? 1.5, padWidth = 1.3, padStart = opts.padStart ?? 0.6;
 
   const approach = tracePath(entry, [{ len: 1.3, pitch: -deg(2) }]);

@@ -9,7 +9,7 @@ import { TRACK } from '../../config.js';
 // a gentler, slower route and rejoins the main track further on.
 // opts: { gap, drop }
 export function build(ctx, entry, opts = {}) {
-  const gap = opts.gap ?? 1.35, drop = opts.drop ?? 0.6;
+  const gap = opts.gap ?? 0.91, drop = opts.drop ?? 0.6;
   const ramp = tracePath(entry, [{ len: opts.rampLen ?? 1.6, pitch: deg(opts.rampPitch ?? -12) }, { len: 0.9, pitch: deg(-3) }]);
   buildTrack(ctx, ramp);
   const lip = lastFrame(ramp);
