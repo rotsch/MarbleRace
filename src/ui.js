@@ -55,7 +55,7 @@ export class UI {
         this.texture.checked = !this.texture.checked;
         this.setTexture(this.texture.checked, handlers);
       } else if (e.key === 'r' || e.key === 'R') {
-        handlers.restart(this.seed.value.trim() || '1');
+        handlers.resetKey(this.seed.value.trim() || '1');
       }
     });
   }
@@ -148,7 +148,7 @@ export class UI {
 
   setFree(on, handlers) {
     this.hint.textContent = on
-      ? 'Free camera: click to steer with the mouse (Esc releases), WASD move, E/Q up/down, Shift faster.'
+      ? 'Free camera: click to steer with the mouse (Esc releases), WASD move, Q/E up/down, Shift faster.'
       : 'Follow camera tracks the leader.';
     handlers.free(on);
   }

@@ -48,6 +48,8 @@ function restart(seed, countdown = true) {
 
 const handlers = {
   restart,
+  // R: back to the start line and wait; R again (or Start) starts it.
+  resetKey: (seed) => (phase === 'ready' ? startCountdown() : restart(seed, false)),
   speed: (v) => (speed = v),
   debug: (on) => view.setDebug(on),
   free: (on) => rig.setFree(on),
@@ -85,6 +87,7 @@ function frame(now) {
   }
   const alpha = phase === 'running' ? stepper.advance(frameDt, speed, () => race.step()) : 1;
   view.updateMarbles(race.marbles, alpha);
+  view.updateShadows(race);
 
   // Follow the leader; once everyone is home, rest on the finish basin.
   const lead = race.leader();

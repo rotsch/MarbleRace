@@ -4,7 +4,7 @@ const MOVE_KEYS = new Set(['KeyW', 'KeyA', 'KeyS', 'KeyD', 'KeyQ', 'KeyE']);
 const MAX_PITCH = THREE.MathUtils.degToRad(89);
 
 // Follow camera (smoothly tracks the leading marble) and a free fly camera:
-// click to steer with the mouse (pointer lock), WASD to move, E/Q up/down,
+// click to steer with the mouse (pointer lock), WASD to move, Q/E up/down,
 // Shift to move faster.
 export class CameraRig {
   constructor(camera, dom) {
@@ -75,8 +75,8 @@ export class CameraRig {
     if (k.has('KeyS')) move.sub(forward);
     if (k.has('KeyD')) move.add(right);
     if (k.has('KeyA')) move.sub(right);
-    if (k.has('KeyE')) move.y += 1;
-    if (k.has('KeyQ')) move.y -= 1;
+    if (k.has('KeyQ')) move.y += 1;
+    if (k.has('KeyE')) move.y -= 1;
     if (move.lengthSq() > 0) {
       const speed = this.baseSpeed * (k.has('ShiftLeft') || k.has('ShiftRight') ? this.boost : 1);
       cam.position.addScaledVector(move.normalize(), speed * dt);

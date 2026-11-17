@@ -8,8 +8,6 @@ export class View {
   constructor(canvas) {
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFShadowMap;
     this.renderer.toneMapping = THREE.NoToneMapping;
 
     this.scene = new THREE.Scene();
@@ -30,18 +28,15 @@ export class View {
 
     this.scene.add(new THREE.HemisphereLight(0xffffff, 0xdcdcdc, 2.2));
     this.sun = new THREE.DirectionalLight(0xffffff, 1.6);
-    this.sun.castShadow = true;
-    this.sun.shadow.mapSize.set(2048, 2048);
-    this.sun.shadow.radius = 5;
-    this.sun.shadow.bias = -0.0004;
-    this.sun.shadow.normalBias = 0.02;
-    const sc = this.sun.shadow.camera;
-    sc.left = sc.bottom = -11;
-    sc.right = sc.top = 11;
-    sc.near = 1;
-    sc.far = 90;
     this.scene.add(this.sun, this.sun.target);
     this.sunOffset = new THREE.Vector3(7, 26, 5);
+    // Marble shadows: no shadow map (the course casts no shadow, so a shadow
+    // map would let marble shadows fall through onto every track below).
+    // Instead a soft blob sits where a ray from the marble along the sunlight
+    // first hits the course: only on the track the marble is on or above.
+    this.sunDir = this.sunOffset.clone().negate().normalize();
+    this.shadowTexture = this._shadowTexture();
+    this.shadows = [];
 
     this.courseGroup = null;
     this.marbleMeshes = [];
@@ -83,9 +78,64 @@ export class View {
     }
     this.marbleMeshes = race.marbles.map((m) => {
       const mesh = new THREE.Mesh(this.sphere, this._marbleMaterial(m.color));
-      mesh.castShadow = true;
       this.scene.add(mesh);
       return mesh;
+    });
+    for (const s of this.shadows) this.scene.remove(s);
+    this.shadows = race.marbles.map(() => {
+      const s = new THREE.Mesh(
+        new THREE.PlaneGeometry(1, 1),
+        new THREE.MeshBasicMaterial({
+          map: this.shadowTexture, transparent: true, depthWrite: false,
+          polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2,
+        })
+      );
+      s.renderOrder = 1;
+      s.visible = false;
+      this.scene.add(s);
+      return s;
+    });
+  }
+
+  // Soft round shadow, dark in the middle and fading out.
+  _shadowTexture() {
+    const c = document.createElement('canvas');
+    c.width = c.height = 128;
+    const g = c.getContext('2d');
+    const grad = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+    grad.addColorStop(0, 'rgba(0,0,0,0.55)');
+    grad.addColorStop(0.45, 'rgba(0,0,0,0.35)');
+    grad.addColorStop(1, 'rgba(0,0,0,0)');
+    g.fillStyle = grad;
+    g.fillRect(0, 0, 128, 128);
+    return new THREE.CanvasTexture(c);
+  }
+
+  // Place each marble's shadow on the first course surface along the
+  // sunlight below it. Other marbles, sensors and the invisible room floor
+  // are ignored. The shadow grows and fades the higher the marble is.
+  updateShadows(race) {
+    const R = race.RAPIER, r = MARBLE.radius;
+    const course = race.course.body.handle;
+    const flags = R.QueryFilterFlags.EXCLUDE_DYNAMIC | R.QueryFilterFlags.EXCLUDE_SENSORS;
+    const maxDist = 3;
+    const n = new THREE.Vector3(), q = new THREE.Quaternion(), z = new THREE.Vector3(0, 0, 1);
+    race.marbles.forEach((m, i) => {
+      const s = this.shadows[i], p = this.marbleMeshes[i].position;
+      const ray = new R.Ray({ x: p.x, y: p.y, z: p.z }, { x: this.sunDir.x, y: this.sunDir.y, z: this.sunDir.z });
+      const hit = race.world.castRayAndGetNormal(ray, maxDist, true, flags, undefined, undefined, undefined,
+        (c) => c.parent()?.handle === course);
+      if (!hit) return (s.visible = false);
+      const dist = Math.max(0, hit.timeOfImpact - r);
+      const fade = 1 - dist / maxDist;
+      n.set(hit.normal.x, hit.normal.y, hit.normal.z);
+      if (n.dot(this.sunDir) > 0) n.negate(); // face back towards the marble
+      s.position.set(p.x + this.sunDir.x * hit.timeOfImpact, p.y + this.sunDir.y * hit.timeOfImpact, p.z + this.sunDir.z * hit.timeOfImpact)
+        .addScaledVector(n, 0.002);
+      s.quaternion.copy(q.setFromUnitVectors(z, n));
+      s.scale.setScalar(r * (2.6 + dist * 1.5));
+      s.material.opacity = fade * fade;
+      s.visible = true;
     });
   }
 
@@ -148,7 +198,6 @@ export class View {
   }
 
   render(focus) {
-    // Keep the shadow frustum centred on what the camera looks at.
     this.sun.target.position.copy(focus);
     this.sun.position.copy(focus).add(this.sunOffset);
     this.renderer.render(this.scene, this.camera);

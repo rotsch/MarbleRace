@@ -25,17 +25,18 @@ Node 18 or newer.
 
 | | |
 |---|---|
-| Seed field + Restart (or `R`, or Enter in the field) | replay a race; the same seed gives exactly the same race |
+| Seed field + Restart (or Enter in the field) | replay a race; the same seed gives exactly the same race |
+| `R` | back to the start line and wait; `R` again starts the race (with the countdown) |
 | New seed | restart with a random seed |
 | Speed slider | simulation speed 0.25x to 2x |
 | `B` or checkbox | physics debug view (draws every collider) |
 | `C` or checkbox | toggle follow camera / free fly camera |
 | click scene | enter free camera and steer with the mouse (pointer lock, `Esc` releases) |
 | `W` `A` `S` `D` | fly forward / left / back / right (enters free camera) |
-| `E` / `Q` | fly up / down |
+| `Q` / `E` | fly up / down |
 | `Shift` | fly faster |
 | `T` or checkbox | track texture on/off: a random mosaic of every picture in `textures/` (starts off; stays white if the folder has no pictures) |
-| Start race (button) | the page opens with the marbles waiting on the start line; every start (this button, Restart / `R`, New seed, physics Apply) counts down 3, 2, 1 first |
+| Start race (button) | the page opens with the marbles waiting on the start line; every start (this button, a second `R`, Restart, New seed, physics Apply) counts down 3, 2, 1 first |
 | Progress line (top) | every marble at its distance along the course; marbles further ahead are drawn over those behind; shows the leader (the winner once someone finishes) |
 | Physics panel | marble size, bounciness, grip and rolling resistance; track bounciness and grip; rubber pad bounciness. Apply restarts the race; values are remembered in this browser |
 
