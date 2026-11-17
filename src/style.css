@@ -46,6 +46,20 @@ button:hover { background: #111; color: #fff; }
   border: 1px solid #111; box-sizing: border-box; will-change: left;
 }
 #progress .ends { display: flex; justify-content: space-between; margin-top: 3px; font-size: 10px; color: #666; }
+/* Start button and countdown, centred over the scene. */
+#start-overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
+#start-overlay[hidden], #countdown[hidden] { display: none; }
+#start-race {
+  flex: none; pointer-events: auto; font-size: 20px; font-weight: 600; letter-spacing: 0.04em;
+  padding: 14px 34px; border: 2px solid #111; background: rgba(255, 255, 255, 0.92);
+}
+#countdown {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  font-size: 120px; font-weight: 700; line-height: 1; color: #111;
+  text-shadow: 0 0 18px #fff, 0 0 4px #fff; font-variant-numeric: tabular-nums;
+}
+#countdown.pop { animation: pop 0.35s ease-out; }
+@keyframes pop { from { transform: translate(-50%, -50%) scale(1.5); opacity: 0.3; } }
 @media (max-width: 900px) {
   #progress { left: 14px; right: 14px; width: auto; transform: none; }
   #ranking, #controls { top: 104px; }

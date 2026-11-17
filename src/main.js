@@ -18,13 +18,32 @@ const stepper = new FixedStepper();
 let race = null;
 let speed = 1;
 
-function restart(seed) {
+// Race phases: 'ready' (marbles wait on the start line until Start is
+// pressed), 'countdown' (3, 2, 1 on screen), 'running'. Physics only steps
+// while running; the camera and rendering always run.
+const COUNTDOWN = 3; // seconds
+let phase = 'ready';
+let countdownEnd = 0;
+
+function startCountdown() {
+  phase = 'countdown';
+  countdownEnd = performance.now() + COUNTDOWN * 1000;
+  ui.hideStart();
+}
+
+// countdown: false only for the very first race, which waits for Start.
+function restart(seed, countdown = true) {
   if (race) race.dispose();
   race = new Race(RAPIER, seed, view.materials, params.get('layout') || 'full');
   view.setRace(race);
   stepper.accumulator = 0;
   rig.reset();
   window.race = race; // handy for inspection from the console
+  if (countdown) startCountdown();
+  else {
+    phase = 'ready';
+    ui.showStart(startCountdown);
+  }
 }
 
 const handlers = {
@@ -37,7 +56,7 @@ const handlers = {
 const ui = new UI(handlers);
 rig.onRequestFree = () => ui.enterFree(handlers);
 ui.seed.value = params.get('seed') || '1';
-restart(ui.seed.value);
+restart(ui.seed.value, false);
 
 // Dev aid: ?cam=x,y,z,tx,ty,tz starts in free camera at a fixed viewpoint.
 if (params.get('cam')) {
@@ -55,7 +74,16 @@ let last = performance.now();
 function frame(now) {
   const frameDt = (now - last) / 1000;
   last = now;
-  const alpha = stepper.advance(frameDt, speed, () => race.step());
+  if (phase === 'countdown') {
+    const left = (countdownEnd - now) / 1000;
+    if (left > 0) ui.showCountdown(String(Math.min(COUNTDOWN, Math.ceil(left))));
+    else {
+      phase = 'running';
+      stepper.accumulator = 0;
+      ui.showCountdown('Go!', 700);
+    }
+  }
+  const alpha = phase === 'running' ? stepper.advance(frameDt, speed, () => race.step()) : 1;
   view.updateMarbles(race.marbles, alpha);
 
   // Follow the leader; once everyone is home, rest on the finish basin.

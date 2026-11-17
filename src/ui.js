@@ -19,6 +19,11 @@ export class UI {
     this.leader = $('leader');
     this.markers = $('progress-markers');
     this.markerRace = null;
+    this.startOverlay = $('start-overlay');
+    this.countdown = $('countdown');
+    this.countdownText = '';
+    this.countdownTimer = null;
+    $('start-race').addEventListener('click', () => this.onStart?.());
     this.lastHtml = '';
 
     $('restart').addEventListener('click', () => handlers.restart(this.seed.value.trim() || '1'));
@@ -101,6 +106,38 @@ export class UI {
       this.texture.checked = false;
       this.hint.textContent = 'No track textures: add pictures to the textures/ folder.';
     }
+  }
+
+  // Big 'Start race' button for a race that waits on the start line.
+  showStart(onStart) {
+    this.onStart = onStart;
+    this.startOverlay.hidden = false;
+    this.showCountdown(null);
+  }
+
+  hideStart() {
+    this.startOverlay.hidden = true;
+    this.onStart = null;
+  }
+
+  // Countdown text in the middle of the screen; null hides it. With
+  // `hideAfter` (ms) it disappears by itself.
+  showCountdown(text, hideAfter = 0) {
+    clearTimeout(this.countdownTimer);
+    if (text === null) {
+      this.countdown.hidden = true;
+      this.countdownText = '';
+      return;
+    }
+    if (text !== this.countdownText) {
+      this.countdownText = text;
+      this.countdown.textContent = text;
+      this.countdown.hidden = false;
+      this.countdown.classList.remove('pop');
+      void this.countdown.offsetWidth; // restart the animation
+      this.countdown.classList.add('pop');
+    }
+    if (hideAfter) this.countdownTimer = setTimeout(() => this.showCountdown(null), hideAfter);
   }
 
   // Entering free mode from the camera itself (click or a movement key).
