@@ -30,7 +30,7 @@ Node 18 or newer.
 | New seed | restart with a random seed |
 | Speed slider | simulation speed 0.25x to 2x |
 | `B` or checkbox | physics debug view (draws every collider) |
-| `C` or Camera menu | cycle the camera: follow the leader → free fly → leader's view (rides on the leading marble, looking where it rolls; it switches marbles once a new leader is 2.5 cm ahead) |
+| `C` or Camera menu | cycle the camera: follow the leader → free fly → leader's view (rides on the leading marble, looking along the track a little ahead; it switches marbles once a new leader is 2.5 cm ahead) |
 | click scene | enter free camera and steer with the mouse (pointer lock, `Esc` releases) |
 | `W` `A` `S` `D` | fly forward / left / back / right (enters free camera) |
 | `Q` / `E` | fly up / down |

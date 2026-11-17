@@ -80,13 +80,12 @@ export class CameraRig {
     this.povInit = false;
   }
 
-  // Eye just above the marble, looking along its velocity (the course
-  // direction while it is nearly still), with the track's up as up so the
-  // view turns over with the marble through the loop.
+  // Eye just above the marble, looking along the course (pov.dir), with the
+  // track's up as up so the view turns over with the marble through the loop.
   _updatePov(dt, pov) {
     const cam = this.camera;
-    const want = pov.vel.lengthSq() > 0.09 ? pov.vel.clone().normalize() : pov.tangent.clone().normalize();
-    const kDir = this.povInit ? 1 - Math.exp(-dt * 7) : 1;
+    const want = pov.dir.clone().normalize();
+    const kDir = this.povInit ? 1 - Math.exp(-dt * 5) : 1;
     const kUp = this.povInit ? 1 - Math.exp(-dt * 4) : 1;
     this.povDir.lerp(want, kDir).normalize();
     this.povUp.lerp(pov.up, kUp).normalize();
@@ -121,7 +120,7 @@ export class CameraRig {
 
   // target: world position to look at; tangent: course direction there;
   // hint: optional per-section camera placement (see CourseContext.setCamera);
-  // pov: { pos, vel, up, tangent, radius } of the marble to ride on.
+  // pov: { pos, dir, up, radius } of the marble to ride on.
   update(dt, target, tangent, hint = null, pov = null) {
     if (this.free) {
       this._updateFree(dt);

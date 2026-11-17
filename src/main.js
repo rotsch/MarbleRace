@@ -76,7 +76,9 @@ if (params.get('cam')) {
 const target = new THREE.Vector3();
 const tangent = new THREE.Vector3(0, 0, 1);
 let hint = null;
-const pov = { pos: new THREE.Vector3(), vel: new THREE.Vector3(), up: new THREE.Vector3(), tangent: new THREE.Vector3(), radius: MARBLE.radius };
+const POV_AHEAD = 0.5; // units (5 cm real)
+const POV_OFF_ROUTE = 0.45; // further than this from the centre line: on a side route
+const pov = { pos: new THREE.Vector3(), dir: new THREE.Vector3(), up: new THREE.Vector3(), radius: MARBLE.radius };
 let last = performance.now();
 
 function frame(now) {
@@ -119,9 +121,23 @@ function frame(now) {
     const m = race.marbles[povIndex];
     const point = race.course.path[m.pathIndex];
     pov.pos.copy(view.marbleMeshes[povIndex].position);
-    pov.vel.copy(m.body.linvel());
+    // Look along the course: from the marble's centre-line point towards the
+    // point POV_AHEAD further on, so the view leads into bends instead of
+    // facing whatever wall the marble happens to be rolling or bouncing at.
+    // On a side route (splitter detour, recovery paths, the loop's bypass)
+    // the centre line runs elsewhere, so look along the marble's own motion.
+    const path = race.course.path;
+    const off = pov.pos.distanceTo(point.pos);
+    const vel = m.body.linvel();
+    if (off > POV_OFF_ROUTE && vel.x * vel.x + vel.y * vel.y + vel.z * vel.z > 0.25) {
+      pov.dir.set(vel.x, vel.y, vel.z);
+    } else {
+      let j = m.pathIndex;
+      while (j < path.length - 1 && path[j].s < point.s + POV_AHEAD) j++;
+      if (j > m.pathIndex) pov.dir.subVectors(path[j].pos, point.pos);
+      else pov.dir.copy(point.tangent);
+    }
     pov.up.copy(point.up);
-    pov.tangent.copy(point.tangent);
     pov.radius = MARBLE.radius;
     ride = pov;
   }
