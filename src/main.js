@@ -5,6 +5,9 @@ import { FixedStepper, initPhysics } from './physics.js';
 import { View } from './render.js';
 import { CameraRig } from './camera.js';
 import { UI } from './ui.js';
+import { loadStored } from './tuning.js';
+
+loadStored(); // physics values the player set last time
 
 await initPhysics(RAPIER);
 

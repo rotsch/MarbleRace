@@ -26,6 +26,15 @@
         <label class="check"><input id="debug" type="checkbox" /> Physics debug (B)</label>
         <label class="check"><input id="free" type="checkbox" /> Free camera (C)</label>
         <p id="hint">Follow camera tracks the leader.</p>
+        <details id="physics">
+          <summary>Physics</summary>
+          <div id="tunables"></div>
+          <div class="row">
+            <button id="physics-apply" title="Restart the race with these values">Apply</button>
+            <button id="physics-reset" title="Back to the default values">Defaults</button>
+          </div>
+          <p class="note">Applying restarts the race. Marble weight has no setting: every marble weighs the same, and without air resistance that changes nothing.</p>
+        </details>
       </section>
     </div>
     <script type="module" src="/src/main.js"></script>

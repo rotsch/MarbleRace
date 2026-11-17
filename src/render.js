@@ -41,7 +41,7 @@ export class View {
 
     this.courseGroup = null;
     this.marbleMeshes = [];
-    this.sphere = new THREE.SphereGeometry(MARBLE.radius, 40, 28);
+    this.sphere = null; // built in setRace, since the marble size can change
 
     this.debugLines = new THREE.LineSegments(
       new THREE.BufferGeometry(),
@@ -73,6 +73,10 @@ export class View {
     }
     this.courseGroup = race.course.group;
     this.scene.add(this.courseGroup);
+    if (!this.sphere || this.sphere.parameters.radius !== MARBLE.radius) {
+      this.sphere?.dispose();
+      this.sphere = new THREE.SphereGeometry(MARBLE.radius, 40, 28);
+    }
     this.marbleMeshes = race.marbles.map((m) => {
       const mesh = new THREE.Mesh(this.sphere, this._marbleMaterial(m.color));
       mesh.castShadow = true;

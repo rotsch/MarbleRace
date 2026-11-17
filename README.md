@@ -34,6 +34,7 @@ Node 18 or newer.
 | `W` `A` `S` `D` | fly forward / left / back / right (enters free camera) |
 | `E` / `Q` | fly up / down |
 | `Shift` | fly faster |
+| Physics panel | marble size, bounciness, grip and rolling resistance; track bounciness and grip; rubber pad bounciness. Apply restarts the race; values are remembered in this browser |
 
 URL parameters: `?seed=42` picks the starting seed; `?layout=loop` loads one
 section on its own (`pegField`, `funnel`, `loop`, `halfPipe`, `splitter`,

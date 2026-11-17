@@ -25,6 +25,13 @@ input[type='range'] { width: 100%; margin: 0; accent-color: #111; }
 button { flex: 1; font: inherit; padding: 4px 6px; border: 1px solid #111; background: #fff; cursor: pointer; }
 button:hover { background: #111; color: #fff; }
 #hint { margin: 0; color: #666; font-size: 11px; }
+#controls { max-height: calc(100vh - 28px); overflow-y: auto; box-sizing: border-box; }
+#physics { border-top: 1px solid #ccc; padding-top: 6px; }
+#physics summary { cursor: pointer; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 600; }
+#tunables { display: flex; flex-direction: column; gap: 6px; margin: 8px 0; }
+#tunables label span { float: right; color: #444; font-variant-numeric: tabular-nums; }
+#tunables label.changed { font-weight: 600; }
+#physics .note { margin: 6px 0 0; color: #666; font-size: 11px; }
 @media (max-width: 560px) {
-  #controls { top: auto; bottom: 14px; }
+  #controls { top: auto; bottom: 14px; max-height: 50vh; }
 }
