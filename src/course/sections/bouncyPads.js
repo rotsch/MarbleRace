@@ -13,8 +13,8 @@ import { BOUNCY, TRACK } from '../../config.js';
 // opts: { fall, rise, reach, tilt }
 export function build(ctx, entry, opts = {}) {
   const fall = opts.fall ?? 0.5; // approach track down to the pad
-  const rise = opts.rise ?? Number(globalThis.process?.env?.PAD_RISE ?? 0.22); // upper track above the approach track
-  const reach = opts.reach ?? Number(globalThis.process?.env?.PAD_REACH ?? 2.3); // forward distance from approach end to upper track
+  const rise = opts.rise ?? 0.22; // upper track above the approach track
+  const reach = opts.reach ?? 2.3; // forward distance from approach end to upper track
   const padLen = opts.padLen ?? 1.5, padWidth = 1.3, padStart = opts.padStart ?? 0.6;
 
   const approach = tracePath(entry, [{ len: 1.3, pitch: -deg(2) }]);
@@ -24,7 +24,7 @@ export function build(ctx, entry, opts = {}) {
 
   // Thin bouncy skin on an ordinary base, so only the top face is springy.
   const bouncy = { restitution: BOUNCY.restitution, restitutionMax: true, friction: BOUNCY.friction, frictionMin: true };
-  const tilt = new Quaternion().setFromAxisAngle(new Vector3(1, 0, 0), -(opts.tilt ?? deg(Number(globalThis.process?.env?.PAD_TILT ?? 12))));
+  const tilt = new Quaternion().setFromAxisAngle(new Vector3(1, 0, 0), -(opts.tilt ?? deg(12)));
   const quat = frameQuat(a).multiply(tilt);
   const up = new Vector3(0, 1, 0).applyQuaternion(quat);
   const top = framePoint(a, 0, -fall, padStart + padLen / 2);
@@ -37,6 +37,13 @@ export function build(ctx, entry, opts = {}) {
   const back = 1.9;
   const lowStart = a.pos.clone().addScaledVector(F, -back).setY(a.pos.y - floorDrop);
   const upper = a.pos.clone().addScaledVector(F, reach).setY(a.pos.y + rise);
+  // Side-on view of the jump.
+  const L = makeFrame(a.pos, a.yaw, 0).L;
+  const side = { type: 'offset', offset: L.clone().multiplyScalar(-4.2).add(new Vector3(0, 1.6, 0)).addScaledVector(F, -1.0) };
+  ctx.setCamera(side);
+  ctx.addPathPoint(a.pos.clone().addScaledVector(F, 0.1));
+  ctx.addPathPoint(upper.clone().addScaledVector(F, -0.1));
+  ctx.setCamera(null);
   const { exit, lowFrames, mainFrames } = rejoin(ctx, {
     main: { pos: upper, yaw: a.yaw, width: 1.5, wideLen: 2.6, rail: 0.5 },
     low: { pos: lowStart, dead: true, width: 3.0, wideLen: back + reach + 1.8, lead: back + reach + 0.8, rail: 0.7 },

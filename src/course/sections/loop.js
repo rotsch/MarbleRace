@@ -1,6 +1,6 @@
 import { Vector3 } from 'three';
 import { tracePath, makeFrame, framePoint, lastFrame, deg } from '../frame.js';
-import { buildTrack } from '../trackBuilder.js';
+import { buildTrack, widthStops } from '../trackBuilder.js';
 import { rejoin } from './rejoin.js';
 import { TRACK } from '../../config.js';
 
@@ -50,31 +50,44 @@ export function build(ctx, entry, opts = {}) {
     // Lean the track into the sideways shift (like a banked corkscrew), so the
     // floor rather than a rail pushes the marble across. Rubbing along a rail
     // at loop speeds would cost it most of its energy.
-    const bank = Math.atan((shift * Math.sin(a)) / (2 * Math.PI * r));
+    // Near the bottom the lean is held back (growing with the square of the
+    // angle, like the rise of the loop itself); otherwise the low side of the
+    // leaning floor would dip below the loop's foot and form a pocket.
+    const ideal = Math.atan((shift * Math.sin(a)) / (2 * Math.PI * r));
+    const fromFoot = Math.min(a, 2 * Math.PI - a);
+    const bank = Math.sign(ideal) * Math.min(Math.abs(ideal), 0.7 * fromFoot * fromFoot);
     const g = makeFrame(pos, base.yaw, a, bank);
     g.d = base.d + r * a;
     frames.push(g);
   }
+  // Side-on view of the loop, from the side it does not lean towards.
+  ctx.setCamera({ type: 'offset', offset: Lh.clone().multiplyScalar(-3.4).add(new Vector3(0, 1.1, 0)).addScaledVector(Fh, -0.8) });
   buildTrack(ctx, frames, { rail: 0.36 });
+  ctx.setCamera(null);
   const out = { pos: lastFrame(frames).pos, yaw: base.yaw, pitch: 0 };
   ctx.addSensorAt('loop: completed', makeFrame(out.pos, out.yaw, 0), { x: 0, y: 0.2, z: 0.3 }, 0.36, 0.25, 0.05);
 
-  // Bypass channel under the gap. Its rails reach up past the main track
-  // there, closing the sides of the gap.
+  // Bypass channel under the gap. Under the loop it widens into a tray with
+  // a non-bouncy floor, which also catches marbles that fall off the loop.
   const depth = 0.36, back = 0.45, lowPitch = 0.05;
   const lowStart = framePoint(makeFrame(edge.pos, edge.yaw, 0), 0, -depth + Math.tan(lowPitch) * back, -back);
-  const tall = depth + 0.3;
+  const half = TRACK.width / 2;
+  const trayEnd = back + gap + runIn + r + 0.35;
+  const tray = { l: shift + half + 0.25, r: half + 0.35 };
   const { exit: merged, lowFrames } = rejoin(ctx, {
     main: { pos: out.pos, yaw: out.yaw, rail: 0.4 },
     low: {
       pos: lowStart,
-      lead: back + gap + runIn + r + 0.5, // stay under the loop before moving sideways
-      rail: (d) => (d > back - 0.08 && d < back + gap + 0.08 ? tall : 0.28),
+      dead: true,
+      widthFn: widthStops([[0, tray], [trayEnd, tray], [trayEnd + 1.2, { l: half, r: half }]]),
+      lead: trayEnd + 1.2,
+      // Kept below the underside of the tracks that pass overhead.
+      rail: () => 0.28,
     },
     len: opts.len ?? 6.5,
     lowPitch,
   });
-  ctx.addBoxAt(lowFrames[0], { x: 0, y: 0.12, z: -0.02 }, TRACK.width / 2 + TRACK.railThickness, 0.16, 0.02);
+  ctx.addBoxAt(lowFrames[0], { x: (tray.l - tray.r) / 2, y: 0.12, z: -0.02 }, (tray.l + tray.r) / 2 + TRACK.railThickness, 0.16, 0.02);
   const mid = lowFrames[Math.floor(lowFrames.length * 0.7)];
   ctx.addSensorAt('loop: bypass', mid, { x: 0, y: 0.2, z: 0 }, 0.36, 0.25, 0.05);
   return merged;

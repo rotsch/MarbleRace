@@ -46,7 +46,7 @@ export const DEAD = { restitution: 0.05, restitutionMin: true };
 export const BOUNCY = {
   // Close to perfectly elastic. The pad is tilted, so the bounce turns the
   // marble's forward speed into height; no energy is invented.
-  restitution: Number(globalThis.process?.env?.PAD_E ?? 1.0),
+  restitution: 1.0,
   friction: 0.05,
 };
 

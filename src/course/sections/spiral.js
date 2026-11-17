@@ -1,4 +1,4 @@
-import { tracePath, arc, lastFrame, deg } from '../frame.js';
+import { tracePath, arc, framePoint, lastFrame, deg } from '../frame.js';
 import { buildTrack } from '../trackBuilder.js';
 
 // Corkscrew: several tight turns of banked track stacked on top of each other.
@@ -12,7 +12,10 @@ export function build(ctx, entry, opts = {}) {
     arc(radius, side * Math.PI * 2 * (turns - 0.25), { bank: side * 0.42 }),
     { len: 0.8, pitch: -0.07 },
   ]);
+  // Watch from the axis of the helix, where no turn of track is in the way.
+  ctx.setCamera({ type: 'axis', pos: framePoint(frames[0], side * radius, 0, 0), up: 0.9 });
   // Tall rail on the outside of the turn, where the marbles ride.
   buildTrack(ctx, frames, { rail: side > 0 ? { l: 0.24, r: 0.5 } : { l: 0.5, r: 0.24 } });
+  ctx.setCamera(null);
   return lastFrame(frames);
 }

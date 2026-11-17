@@ -24,8 +24,9 @@ export class CameraRig {
     this.initialised = false;
   }
 
-  // target: world position to look at; tangent: course direction there.
-  update(dt, target, tangent) {
+  // target: world position to look at; tangent: course direction there;
+  // hint: optional per-section camera placement (see CourseContext.setCamera).
+  update(dt, target, tangent, hint = null) {
     if (this.free) {
       this.orbit.update();
       this.focus.copy(this.orbit.target);
@@ -37,16 +38,29 @@ export class CameraRig {
       this.focus.copy(target);
       this.heading.copy(flat);
     }
-    const kFocus = 1 - Math.exp(-dt * 5);
+    const kFocus = 1 - Math.exp(-dt * 8);
     const kHead = 1 - Math.exp(-dt * 1.1);
-    const kCam = 1 - Math.exp(-dt * 2.5);
+    const kCam = 1 - Math.exp(-dt * 3);
     this.focus.lerp(target, kFocus);
     this.heading.lerp(flat, kHead).normalize();
-    const desired = this.focus.clone().addScaledVector(this.heading, -3.4).add(new THREE.Vector3(0, 2.7, 0));
-    // Sit a little to the side so the track ahead is not hidden by the marbles.
-    desired.addScaledVector(new THREE.Vector3(this.heading.z, 0, -this.heading.x), 1.3);
+
+    const desired = new THREE.Vector3();
+    if (hint?.type === 'fixed') {
+      desired.copy(hint.pos);
+    } else if (hint?.type === 'axis') {
+      desired.set(hint.pos.x, this.focus.y + hint.up, hint.pos.z);
+    } else if (hint?.type === 'offset') {
+      desired.copy(this.focus).add(hint.offset);
+    } else {
+      // Chase view: behind and above, a little to the side so the track
+      // ahead is not hidden by the marbles.
+      desired.copy(this.focus).addScaledVector(this.heading, -3.4);
+      desired.y += 2.7;
+      desired.addScaledVector(new THREE.Vector3(this.heading.z, 0, -this.heading.x), 1.3);
+    }
     if (!this.initialised) this.camera.position.copy(desired);
     else this.camera.position.lerp(desired, kCam);
+    this.camera.up.set(0, 1, 0);
     this.camera.lookAt(this.focus);
     this.initialised = true;
   }

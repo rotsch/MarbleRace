@@ -18,16 +18,29 @@ export class CourseContext {
     this.path = []; // centre line: { pos, up, tangent, s, section }
     this.sections = []; // { name, s0 }
     this.sectionName = 'start';
+    this.cameraHint = null; // applied to path points recorded while set
     this.minY = Infinity;
     this.bounds = { min: new Vector3(Infinity, Infinity, Infinity), max: new Vector3(-Infinity, -Infinity, -Infinity) };
     this.sensors = new Map(); // collider handle -> name
+    this.cameraHints = [];
     this.spawn = null;
   }
 
   section(name) {
     this.sectionName = name;
+    this.cameraHint = null;
     const s0 = this.path.length ? this.path[this.path.length - 1].s : 0;
     this.sections.push({ name, s0 });
+  }
+
+  // Camera hint for the follow camera while the leader is on the path points
+  // recorded from now on (until the next section, or setCamera(null)).
+  //  { type: 'fixed', pos }        camera sits at pos
+  //  { type: 'axis', pos, up }     camera on the vertical line through pos, `up` above the marble
+  //  { type: 'offset', offset }    camera at marble + offset
+  setCamera(hint) {
+    this.cameraHint = hint;
+    if (hint && !this.cameraHints.includes(hint)) this.cameraHints.push(hint);
   }
 
   _grow(x, y, z) {
@@ -142,10 +155,10 @@ export class CourseContext {
       const n = Math.ceil(dist / 0.1);
       for (let i = 1; i < n; i++) {
         const p = prev.pos.clone().lerp(pos, i / n);
-        this.path.push({ pos: p, up: new Vector3(0, 1, 0), tangent: null, s: prev.s + (dist * i) / n, section: this.sectionName });
+        this.path.push({ pos: p, up: new Vector3(0, 1, 0), tangent: null, s: prev.s + (dist * i) / n, section: this.sectionName, cam: this.cameraHint });
       }
     }
-    this.path.push({ pos: pos.clone(), up: up.clone(), tangent: tangent && tangent.clone(), s: (prev ? prev.s : 0) + dist, section: this.sectionName });
+    this.path.push({ pos: pos.clone(), up: up.clone(), tangent: tangent && tangent.clone(), s: (prev ? prev.s : 0) + dist, section: this.sectionName, cam: this.cameraHint });
   }
 
   // Lift the whole course so its lowest point sits `clearance` above the floor.
@@ -162,6 +175,7 @@ export class CourseContext {
       }
     }
     if (this.spawn) this.spawn.forEach((p) => (p.y += dy));
+    for (const h of this.cameraHints) if (h.pos) h.pos.y += dy;
     this.bounds.min.y += dy;
     this.bounds.max.y += dy;
     this.length = this.path[this.path.length - 1].s;

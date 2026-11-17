@@ -15,14 +15,40 @@ import * as bouncyPads from './sections/bouncyPads.js';
 import * as bottleneck from './sections/bottleneck.js';
 import * as finish from './sections/finish.js';
 
+// Sections that can be raced on their own (start ramp, the section, finish)
+// for testing: `npm run sim -- --layout bottleneck`, or ?layout=bottleneck in
+// the browser.
+const SINGLE = {
+  pegField: [pegField],
+  funnel: [funnel, { side: 1 }],
+  loop: [loop],
+  halfPipe: [halfPipe, { side: 1 }],
+  splitter: [splitter, { side: -1 }],
+  dropCatch: [dropCatch],
+  bumpyRoad: [bumpyRoad],
+  spiral: [spiral, { side: 1 }],
+  bouncyPads: [bouncyPads],
+  bottleneck: [bottleneck],
+};
+export const LAYOUTS = ['full', ...Object.keys(SINGLE)];
+
 // The course layout: an ordered chain of sections. Each section takes the exit
 // pose of the previous one, so sections can be reordered or retuned here.
-export function buildCourse(ctx) {
+export function buildCourse(ctx, layout = 'full') {
   let f = { pos: new Vector3(0, 0, 0), yaw: 0, pitch: deg(-8) };
   const add = (name, mod, opts) => {
     if (ctx.sectionName !== name) ctx.section(name);
     f = mod.build(ctx, f, opts);
   };
+
+  if (SINGLE[layout]) {
+    const [mod, opts] = SINGLE[layout];
+    add('Start', start, { len: 2.6 });
+    add('Run-in', straight, { len: 1.5, pitch: deg(-6) });
+    add(layout, mod, opts);
+    add('Finish', finish);
+    return;
+  }
 
   // Two sharp unbanked bends back to back. Marbles bounce off the outer
   // walls, which is the main way speed is shed between the fast sections.
@@ -47,7 +73,7 @@ export function buildCourse(ctx) {
   add('Spiral', spiral, { side: 1 });
   add('Bouncy pads', bouncyPads);
   sBend('S-bend 4', 1);
-  add('Curve 3', curve, { radius: 1.4, angle: deg(-50), pitch: deg(-4) });
+  add('Curve 3', curve, { radius: 1.4, angle: deg(-50), pitch: deg(-4), rail: 0.6 });
   add('Bottleneck', bottleneck);
   add('Finish', finish);
 }

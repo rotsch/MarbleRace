@@ -24,16 +24,16 @@ export class View {
       outline: new THREE.LineBasicMaterial({ color: 0x000000 }),
     };
 
-    this.scene.add(new THREE.HemisphereLight(0xffffff, 0xe9e9e9, 1.9));
-    this.sun = new THREE.DirectionalLight(0xffffff, 1.5);
+    this.scene.add(new THREE.HemisphereLight(0xffffff, 0xdcdcdc, 2.2));
+    this.sun = new THREE.DirectionalLight(0xffffff, 1.6);
     this.sun.castShadow = true;
     this.sun.shadow.mapSize.set(2048, 2048);
     this.sun.shadow.radius = 5;
     this.sun.shadow.bias = -0.0004;
     this.sun.shadow.normalBias = 0.02;
     const sc = this.sun.shadow.camera;
-    sc.left = sc.bottom = -9;
-    sc.right = sc.top = 9;
+    sc.left = sc.bottom = -11;
+    sc.right = sc.top = 11;
     sc.near = 1;
     sc.far = 90;
     this.scene.add(this.sun, this.sun.target);
@@ -98,18 +98,25 @@ export class View {
     const cx = (min.x + max.x) / 2, cz = (min.z + max.z) / 2;
     const sx = max.x - min.x + pad * 2, sz = max.z - min.z + pad * 2;
     const h = max.y + 12;
-    const mat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1 });
-    const floor = new THREE.Mesh(new THREE.PlaneGeometry(sx, sz), mat);
+    // Unlit white, so the room stays pure white from every angle; a separate
+    // transparent layer just above the floor carries the soft shadows.
+    const white = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    const plane = (w, d, mat) => {
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(w, d), mat);
+      room.add(m);
+      return m;
+    };
+    const floor = plane(sx, sz, white);
     floor.rotation.x = -Math.PI / 2;
     floor.position.set(cx, 0, cz);
-    floor.receiveShadow = true;
-    room.add(floor);
+    const shadow = plane(sx, sz, new THREE.ShadowMaterial({ opacity: 0.17 }));
+    shadow.rotation.x = -Math.PI / 2;
+    shadow.position.set(cx, 0.01, cz);
+    shadow.receiveShadow = true;
     const wall = (w, x, z, ry) => {
-      const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), mat);
+      const m = plane(w, h, white);
       m.position.set(x, h / 2, z);
       m.rotation.y = ry;
-      m.receiveShadow = true;
-      room.add(m);
     };
     wall(sx, cx, cz - sz / 2, 0);
     wall(sx, cx, cz + sz / 2, Math.PI);
@@ -117,7 +124,7 @@ export class View {
     wall(sz, cx + sx / 2, cz, -Math.PI / 2);
     // Thin outlines where floor meets walls, so the room reads as a room.
     const box = new THREE.BoxGeometry(sx, h, sz);
-    const edges = new THREE.LineSegments(new THREE.EdgesGeometry(box), new THREE.LineBasicMaterial({ color: 0xbbbbbb }));
+    const edges = new THREE.LineSegments(new THREE.EdgesGeometry(box), new THREE.LineBasicMaterial({ color: 0xcfcfcf }));
     edges.position.set(cx, h / 2, cz);
     room.add(edges);
     return room;
@@ -132,10 +139,10 @@ export class View {
     const base = new THREE.Color(hex);
     g.fillStyle = `#${base.getHexString()}`;
     g.fillRect(0, 0, 256, 128);
-    const light = base.clone().lerp(new THREE.Color(0xffffff), 0.45);
+    const light = base.clone().lerp(new THREE.Color(0xffffff), 0.35);
     g.strokeStyle = `#${light.getHexString()}`;
-    g.lineWidth = 9;
-    for (const phase of [0, 2.1]) {
+    g.lineWidth = 7;
+    for (const phase of [0]) {
       g.beginPath();
       for (let x = -8; x <= 264; x += 4) {
         const y = 64 + Math.sin((x / 256) * Math.PI * 2 + phase) * 34;

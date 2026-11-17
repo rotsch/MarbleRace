@@ -1,10 +1,11 @@
 // Headless course check: races several seeds without rendering and reports
 // whether every marble finishes, how long each section takes, and whether the
 // safety net (nudge / rescue) ever had to step in.
-//   node scripts/sim.mjs [--seeds 10] [--max 240] [--verbose]
+//   node scripts/sim.mjs [--seeds 10] [--max 240] [--layout full|loop|bottleneck|...] [--quiet] [--verbose]
 import RAPIER from '@dimforge/rapier3d-compat';
 import { Race } from '../src/race.js';
 import { PHYSICS } from '../src/config.js';
+import { initPhysics } from '../src/physics.js';
 
 const arg = (name, def) => {
   const i = process.argv.indexOf(`--${name}`);
@@ -15,11 +16,12 @@ const maxTime = Number(arg('max', 240));
 const verbose = process.argv.includes('--verbose');
 const quiet = process.argv.includes('--quiet');
 const only = arg('seed', null);
+const layout = arg('layout', 'full');
 
-await RAPIER.init();
+await initPhysics(RAPIER);
 
 function run(seed) {
-  const race = new Race(RAPIER, seed);
+  const race = new Race(RAPIER, seed, null, layout);
   const sectionTime = {};
   const speedSum = {}, speedN = {}, speedMax = {};
   let maxSpeed = 0;

@@ -1,5 +1,19 @@
 import { PHYSICS } from './config.js';
 
+// Rapier 0.19's loader triggers a harmless wasm-bindgen deprecation warning
+// on init; keep the console clean by filtering just that message.
+export async function initPhysics(RAPIER) {
+  const warn = console.warn;
+  console.warn = (...args) => {
+    if (!String(args[0]).includes('deprecated parameters for the initialization function')) warn(...args);
+  };
+  try {
+    await RAPIER.init();
+  } finally {
+    console.warn = warn;
+  }
+}
+
 export function createWorld(RAPIER) {
   const world = new RAPIER.World({ x: 0, y: PHYSICS.gravity, z: 0 });
   world.timestep = PHYSICS.timestep;

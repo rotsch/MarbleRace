@@ -8,14 +8,14 @@ import { createMarbles, snapshot } from './marbles.js';
 // One race: world + course + marbles + ranking. No DOM or rendering in here,
 // so it also runs headless (scripts/sim.mjs).
 export class Race {
-  constructor(RAPIER, seed, materials = null) {
+  constructor(RAPIER, seed, materials = null, layout = 'full') {
     this.RAPIER = RAPIER;
     this.seed = seed;
     this.world = createWorld(RAPIER);
     this.events = new RAPIER.EventQueue(true);
     addRoomFloor(RAPIER, this.world);
     this.course = new CourseContext(RAPIER, this.world, materials);
-    buildCourse(this.course);
+    buildCourse(this.course, layout);
     this.course.finalize(RACE.floorClearance);
     this.marbles = createMarbles(RAPIER, this.world, this.course.spawn, createRng(seed));
     this.byHandle = new Map(this.marbles.map((m) => [m.collider.handle, m]));

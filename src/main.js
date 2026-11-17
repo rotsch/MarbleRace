@@ -1,12 +1,12 @@
 import RAPIER from '@dimforge/rapier3d-compat';
 import * as THREE from 'three';
 import { Race } from './race.js';
-import { FixedStepper } from './physics.js';
+import { FixedStepper, initPhysics } from './physics.js';
 import { View } from './render.js';
 import { CameraRig } from './camera.js';
 import { UI } from './ui.js';
 
-await RAPIER.init();
+await initPhysics(RAPIER);
 
 const params = new URLSearchParams(location.search);
 const view = new View(document.getElementById('scene'));
@@ -17,7 +17,7 @@ let speed = 1;
 
 function restart(seed) {
   if (race) race.dispose();
-  race = new Race(RAPIER, seed, view.materials);
+  race = new Race(RAPIER, seed, view.materials, params.get('layout') || 'full');
   view.setRace(race);
   stepper.accumulator = 0;
   rig.reset();
@@ -44,6 +44,7 @@ if (params.get('cam')) {
 
 const target = new THREE.Vector3();
 const tangent = new THREE.Vector3(0, 0, 1);
+let hint = null;
 let last = performance.now();
 
 function frame(now) {
@@ -56,13 +57,16 @@ function frame(now) {
   const lead = race.leader();
   if (lead) {
     target.copy(view.marbleMeshes[lead.index].position);
-    tangent.copy(race.course.path[lead.pathIndex].tangent);
+    const point = race.course.path[lead.pathIndex];
+    tangent.copy(point.tangent);
+    hint = point.cam;
   } else {
     const end = race.course.path[race.course.path.length - 1];
     target.copy(end.pos);
     tangent.copy(end.tangent);
+    hint = end.cam;
   }
-  rig.update(Math.min(frameDt, 0.1), target, tangent);
+  rig.update(Math.min(frameDt, 0.5), target, tangent, hint);
   view.updateDebug(race.world);
   ui.update(race);
   view.render(rig.focus);

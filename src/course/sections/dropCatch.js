@@ -9,7 +9,7 @@ import { TRACK } from '../../config.js';
 // a gentler, slower route and rejoins the main track further on.
 // opts: { gap, drop }
 export function build(ctx, entry, opts = {}) {
-  const gap = opts.gap ?? 1.45, drop = opts.drop ?? 0.6;
+  const gap = opts.gap ?? 1.35, drop = opts.drop ?? 0.6;
   const ramp = tracePath(entry, [{ len: opts.rampLen ?? 1.6, pitch: deg(opts.rampPitch ?? -12) }, { len: 0.9, pitch: deg(-3) }]);
   buildTrack(ctx, ramp);
   const lip = lastFrame(ramp);
@@ -18,7 +18,8 @@ export function build(ctx, entry, opts = {}) {
   const landing = lip.pos.clone().addScaledVector(F, gap).setY(lip.pos.y - drop);
   const recovery = lip.pos.clone().addScaledVector(F, -0.35).setY(lip.pos.y - drop - 0.75);
   const { exit, lowFrames } = rejoin(ctx, {
-    main: { pos: landing, yaw: lip.yaw, width: 1.1, rail: 0.42 },
+    // High walls where marbles land: one that clips the front edge bounces up.
+    main: { pos: landing, yaw: lip.yaw, width: 1.1, rail: (d) => (d < 3 ? 0.85 : 0.4) },
     low: {
       pos: recovery, dead: true, width: 2.6, wideLen: gap + 1.2, taper: 2.2, lead: gap + 0.6,
       // Tall walls only under the gap. Further on the catch track crosses

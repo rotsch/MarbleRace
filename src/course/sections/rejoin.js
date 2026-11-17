@@ -47,7 +47,7 @@ export function rejoin(ctx, { main, low, len, lowPitch = 0.05, mainSide }) {
   const lowWide = low.wideLen ?? 0;
   const lowFrames = tracePath({ pos: low.pos, yaw, pitch: -lowPitch }, lowSegs);
   buildTrack(ctx, lowFrames, {
-    width: widthStops([[0, low.width ?? TRACK.width], [lowWide, low.width ?? TRACK.width], [lowWide + (low.taper ?? 1.3), TRACK.width]]),
+    width: low.widthFn ?? widthStops([[0, low.width ?? TRACK.width], [lowWide, low.width ?? TRACK.width], [lowWide + (low.taper ?? 1.3), TRACK.width]]),
     material: low.dead ? DEAD : undefined,
     rail: typeof low.rail === 'function' ? low.rail : (d) => (d < lowWide + 0.6 ? low.rail ?? 0.3 : 0.3),
     path: false,
@@ -55,7 +55,7 @@ export function rejoin(ctx, { main, low, len, lowPitch = 0.05, mainSide }) {
   const mainFrames = tracePath({ pos: main.pos, yaw, pitch: -mainPitch }, mainSegs);
   buildTrack(ctx, mainFrames, {
     width: widthStops([[0, main.width ?? TRACK.width], [main.wideLen ?? 0, main.width ?? TRACK.width], [(main.wideLen ?? 0) + 1.2, TRACK.width]]),
-    rail: main.rail ?? 0.3,
+    rail: typeof main.rail === 'function' ? main.rail : main.rail ?? 0.3,
   });
   const center = {
     pos: main.pos.clone().addScaledVector(F, len).addScaledVector(L, c).setY(yMerge),

@@ -16,6 +16,9 @@ export function build(ctx, entry, opts = {}) {
   // just inside it, tangent to the bowl and slightly above the surface.
   // The part that overhangs the bowl is a solid block down to the surface, so
   // no marble can wedge itself underneath the track.
+  // One fixed camera above the bowl for the whole time marbles are in it.
+  const cam = { type: 'fixed', pos: new Vector3() };
+  ctx.setCamera(cam);
   const approach = tracePath(entry, [{ len: 0.9, pitch: -0.06 }]);
   buildTrack(ctx, approach);
   const lead = tracePath(lastFrame(approach), [{ len: 1.5 }]);
@@ -58,6 +61,7 @@ export function build(ctx, entry, opts = {}) {
     rings.push(wallProfile.map((p) => new Vector3(center.x + p.x * Math.cos(a), center.y + p.y, center.z + p.x * Math.sin(a))));
   }
   ctx.addSolid(sweepRings(rings, wallProfile));
+  cam.pos.copy(center).addScaledVector(end.F, -2.0).add(new Vector3(0, 3.4, 0));
   ctx.addPathPoint(new Vector3(center.x, center.y + yHole, center.z));
 
   // Catch tray under the hole, heading off in exitYaw.
@@ -69,7 +73,11 @@ export function build(ctx, entry, opts = {}) {
     pitch: -0.1,
   };
   const tray = tracePath(start, [{ len: 2.4 }]);
-  buildTrack(ctx, tray, { width: widthStops([[0, 1.0], [1.1, 1.0], [2.4, TRACK.width]]), rail: 0.32 });
+  buildTrack(ctx, tray, { width: widthStops([[0, 1.0], [1.1, 1.0], [2.4, TRACK.width]]), rail: 0.32, path: false });
+  const emerge = tray.findIndex((f) => f.d > 1.0);
+  ctx.addPath(tray.slice(0, emerge));
+  ctx.setCamera(null);
+  ctx.addPath(tray.slice(emerge));
   ctx.addBoxAt(tray[0], { x: 0, y: 0.13, z: -0.02 }, 0.5 + TRACK.railThickness, 0.17, 0.02);
   return lastFrame(tray);
 }

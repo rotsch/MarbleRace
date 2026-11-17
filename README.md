@@ -1,0 +1,147 @@
+# Marble Race
+
+Eight glass marbles race down one long 3D course in an empty white room.
+Three.js for rendering, Rapier for physics, Vite, plain JavaScript.
+
+## Run
+
+```
+npm install
+npm run dev              # open the URL it prints (http://localhost:5173)
+```
+
+Other commands:
+
+```
+npm run build            # production build into dist/
+npm run preview          # serve the production build
+npm run sim              # headless course check over 10 seeds (no browser)
+npm run physics-check    # single-marble rolling / bounce / collision checks
+```
+
+Node 18 or newer.
+
+## Controls
+
+| | |
+|---|---|
+| Seed field + Restart (or `R`, or Enter in the field) | replay a race; the same seed gives exactly the same race |
+| New seed | restart with a random seed |
+| Speed slider | simulation speed 0.25x to 2x |
+| `D` or checkbox | physics debug view (draws every collider) |
+| `C` or checkbox | toggle follow camera / free orbit camera (drag, right-drag, wheel) |
+
+URL parameters: `?seed=42` picks the starting seed; `?layout=loop` loads one
+section on its own (`pegField`, `funnel`, `loop`, `halfPipe`, `splitter`,
+`dropCatch`, `bumpyRoad`, `spiral`, `bouncyPads`, `bottleneck`).
+
+## The course
+
+Top to bottom, linked by sloped, curving track:
+
+1. **Start ramp**: 8 seeded spawn slots.
+2. **Peg field**: tilted Plinko board of cylinders.
+3. **Funnel**: marbles enter tangentially, circle, drop through the centre hole.
+4. **Loop-the-loop** after a steep drop, with a bypass (see below).
+5. **Half-pipe**: marbles enter at an angle, swing wall to wall, leave through a slot.
+6. **Splitter**: a wedge sends marbles down a short path or a long detour; they merge again.
+7. **Drop and catch**: a jump across a gap; short jumps land in a slower recovery path that rejoins.
+8. **Bumpy road**: washboard of speed bumps.
+9. **Spiral**: 2.75-turn banked corkscrew.
+10. **Bouncy pads**: a tilted springy pad throws marbles up onto a higher track; misses take a lower path.
+11. **Bottleneck**: narrows to a single-marble throat.
+12. **Finish**: sensor collider, then a walled basin.
+
+S-bends (two sharp unbanked corners) sit between the fast sections and act
+as brakes.
+
+How "nothing gets stuck" is handled, section by section:
+
+- **Loop**: there is a short gap in the floor at the foot of the loop. Fast
+  marbles fly across; slow ones, and any that roll back out of the loop, drop
+  through into a channel underneath that rejoins after the loop.
+- **Drop and catch / bouncy pads**: a wide, non-bouncy catch floor under the
+  jump feeds a gentler path that merges back in.
+- **Peg field**: every gap (peg to peg, peg to wall) is wider than two
+  marbles, so pairs cannot wedge.
+- **Bottleneck**: asymmetric, frictionless walls, so two marbles arriving
+  together cannot lock into an arch.
+- **Banked curves**: the bank is eased in no faster than the slope allows, so
+  no edge of the track ever runs uphill.
+- **Safety net**: if a marble has not moved for 3.5 s it gets a nudge, and a
+  marble that leaves the course and reaches the room floor is put back on the
+  track where it left. `npm run sim` counts how often this happens (see
+  "Testing").
+
+## Code layout
+
+```
+src/
+  config.js            every tunable: WORLD_SCALE, marble material, track sizes, solver
+  rng.js               seeded random numbers
+  physics.js           world setup, fixed-timestep accumulator
+  marbles.js           marble bodies and their interpolation state
+  race.js              spawn, ranking, finish sensor, safety net (no DOM, runs headless)
+  render.js            renderer, white room, lights and shadows, marble meshes, debug lines
+  camera.js            follow camera and free orbit camera
+  ui.js                overlay
+  main.js              wires it together, main loop
+  course/
+    course.js          THE LAYOUT: the ordered list of sections
+    frame.js           poses and turtle-style path tracing (length / turn / pitch / bank)
+    trackBuilder.js    sweeps a railed U channel along a path
+    geometry.js        sweep and lathe mesh helpers
+    context.js         what sections use to add colliders, meshes, sensors
+    sections/          one file per obstacle or track type
+scripts/
+  sim.mjs              headless multi-seed race runner
+  physics-check.mjs    single-marble physics checks
+```
+
+Each section exports `build(ctx, entryPose, opts)` and returns its exit pose,
+so the course is a chain: reorder or retune sections in `course/course.js`.
+
+## Physics notes
+
+All of this is in `src/config.js`.
+
+- **Scale**: `WORLD_SCALE = 10`. A 16 mm marble has radius 0.08 units and
+  gravity is 98.1, so motion has real-size timing.
+- **Marbles**: dynamic balls with CCD, density 2.5, restitution 0.55,
+  friction 0.35, angular damping 0.08 (stand-in for rolling resistance).
+- **Timestep**: fixed 1/120 s with an accumulator, at most 8 substeps per
+  frame, render positions interpolated between the last two physics states.
+  The speed slider only changes how fast the accumulator fills.
+- **Track surfaces** are trimesh colliders (`FIX_INTERNAL_EDGES`); pegs,
+  bumps, pads, wedge and bottleneck walls are cylinders, boxes and a convex hull.
+
+Three things I found by measurement that you should know before changing them:
+
+1. **Rapier is pinned to 0.19.3.** Versions 0.20 and later clamp angular
+   velocity to a quarter turn per step. At 1/120 s that stops a marble of this
+   size from rolling faster than about 7.5 units/s (0.75 m/s real); above
+   that it skids and loses speed. 0.19.3 is the newest version without the
+   clamp. To use a newer Rapier you would need a much smaller timestep.
+2. **`solverIterations` is 1** (with 4 PGS iterations). With more solver
+   substeps, a fast-spinning ball sinks visibly into whatever it rolls on
+   (about 20% of its radius at 12 units/s), which also made every joint
+   between track pieces act as a bump.
+3. **Track joints**: each track piece starts 5 mm lower and wider than
+   nominal and eases back, so a marble crossing a joint steps down onto a
+   face. Flush joints between separate trimesh colliders kick marbles upward.
+
+The bouncy pad uses restitution 1.0 on a tilted surface: it converts forward
+speed into height rather than adding energy. (Restitution above 1 worked too,
+but a marble dropping straight down on it gained energy on every bounce.)
+
+## Testing
+
+`npm run sim -- --seeds 30` races 30 seeds headless with the same course and
+physics code the browser uses. It fails if any marble does not finish, prints
+time and speed per section, how many marbles took each route, every safety-net
+incident, and checks that running the same seed twice gives identical results.
+
+`npm run sim -- --layout bottleneck --seeds 150` stress-tests one section with
+all 8 marbles arriving together.
+
+Results from the last runs are in the section below.

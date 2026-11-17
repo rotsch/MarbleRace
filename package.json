@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "sim": "node scripts/sim.mjs"
+    "sim": "node scripts/sim.mjs",
+    "physics-check": "node scripts/physics-check.mjs"
   },
   "dependencies": {
     "@dimforge/rapier3d-compat": "0.19.3",
@@ -15,5 +16,8 @@
   },
   "devDependencies": {
     "vite": "^8.3.8"
+  },
+  "engines": {
+    "node": ">=18"
   }
 }
