@@ -50,9 +50,6 @@ export class CourseContext {
 
   _physics(desc, m = {}) {
     desc.setFriction(m.friction ?? TRACK.friction).setRestitution(m.restitution ?? TRACK.restitution);
-    if (m.restitutionMax) desc.setRestitutionCombineRule(this.RAPIER.CoefficientCombineRule.Max);
-    if (m.restitutionMin) desc.setRestitutionCombineRule(this.RAPIER.CoefficientCombineRule.Min);
-    if (m.frictionMin) desc.setFrictionCombineRule(this.RAPIER.CoefficientCombineRule.Min);
     return this.world.createCollider(desc, this.body);
   }
 

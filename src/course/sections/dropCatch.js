@@ -21,7 +21,7 @@ export function build(ctx, entry, opts = {}) {
     // High walls where marbles land: one that clips the front edge bounces up.
     main: { pos: landing, yaw: lip.yaw, width: 1.1, rail: (d) => (d < 3 ? 0.85 : 0.4) },
     low: {
-      pos: recovery, dead: true, width: 2.6, wideLen: gap + 1.2, taper: 2.2, lead: gap + 0.6,
+      pos: recovery, width: 2.6, wideLen: gap + 1.2, taper: 2.2, lead: gap + 0.6,
       // Tall walls only under the gap. Further on the catch track crosses
       // overhead and tall walls would poke up through its floor.
       rail: (d) => (d < gap + 0.8 ? 1.0 : 0.3),

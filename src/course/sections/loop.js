@@ -68,7 +68,7 @@ export function build(ctx, entry, opts = {}) {
   ctx.addSensorAt('loop: completed', makeFrame(out.pos, out.yaw, 0), { x: 0, y: 0.2, z: 0.3 }, 0.36, 0.25, 0.05);
 
   // Bypass channel under the gap. Under the loop it widens into a tray with
-  // a non-bouncy floor, which also catches marbles that fall off the loop.
+  // a wide floor, which also catches marbles that fall off the loop.
   const depth = 0.36, back = 0.45, lowPitch = 0.05;
   const lowStart = framePoint(makeFrame(edge.pos, edge.yaw, 0), 0, -depth + Math.tan(lowPitch) * back, -back);
   const half = TRACK.width / 2;
@@ -78,7 +78,6 @@ export function build(ctx, entry, opts = {}) {
     main: { pos: out.pos, yaw: out.yaw, rail: 0.4 },
     low: {
       pos: lowStart,
-      dead: true,
       widthFn: widthStops([[0, tray], [trayEnd, tray], [trayEnd + 1.2, { l: half, r: half }]]),
       lead: trayEnd + 1.2,
       // Kept below the underside of the tracks that pass overhead.

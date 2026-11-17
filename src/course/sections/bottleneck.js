@@ -6,11 +6,9 @@ import { TRACK, MARBLE } from '../../config.js';
 // Bottleneck: the track opens into a holding area, then narrows to a throat
 // only one marble wide.
 //
-// Two things keep it from jamming. The walls are asymmetric (one straight,
-// one closing in at an angle), and they are slick: plain box colliders with
-// zero friction. Two marbles that arrive side by side can only lock into an
-// arch if friction against the walls holds them there; without it one of
-// them always slips ahead.
+// The walls are asymmetric (one straight, one closing in at an angle), so two
+// marbles that arrive side by side meet the narrowing at different points and
+// one of them gets ahead. The walls are ordinary track material.
 // opts: { gap, side: 1 | -1 (which side the straight wall is on) }
 export function build(ctx, entry, opts = {}) {
   const gap = opts.gap ?? MARBLE.radius * 2.6;
@@ -21,7 +19,7 @@ export function build(ctx, entry, opts = {}) {
 
   const frames = tracePath(entry, [{ len: d5, pitch: opts.pitch ?? -deg(11) }]);
   // The track itself follows the same outline one wall thickness further
-  // out, so there is no floor behind the slick walls for a marble to end up on.
+  // out, so there is no floor behind the walls for a marble to end up on.
   const throatX = half - gap;
   const w = (far) => (side > 0 ? { l: half + t, r: far + t } : { l: far + t, r: half + t });
   buildTrack(ctx, frames, {
@@ -29,10 +27,9 @@ export function build(ctx, entry, opts = {}) {
     rail: 0.3,
   });
 
-  // Slick walls as boxes. Coordinates: x across (positive = straight-wall
-  // side), z along the track from its start.
+  // Walls as boxes. Coordinates: x across (positive = straight-wall side),
+  // z along the track from its start.
   const f0 = frames[0];
-  const slick = { friction: 0, frictionMin: true };
   const wall = (x1, z1, x2, z2, outward) => {
     const len = Math.hypot(x2 - x1, z2 - z1);
     const angle = Math.atan2((x2 - x1) * side, z2 - z1);
@@ -40,7 +37,7 @@ export function build(ctx, entry, opts = {}) {
     const nx = (z2 - z1) / len, nz = -(x2 - x1) / len;
     const cx = (x1 + x2) / 2 + outward * nx * (t / 2), cz = (z1 + z2) / 2 + outward * nz * (t / 2);
     const quat = frameQuat(f0).multiply(new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), angle));
-    ctx.addBox(framePoint(f0, side * cx, h / 2 - 0.02, cz), quat, t / 2, h / 2, len / 2 + 0.01, slick);
+    ctx.addBox(framePoint(f0, side * cx, h / 2 - 0.02, cz), quat, t / 2, h / 2, len / 2 + 0.01);
   };
   // Straight side. It starts a touch wide so its end is never a ledge.
   wall(half + 0.03, 0, half, 0.3, 1);

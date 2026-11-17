@@ -52,7 +52,7 @@ Top to bottom, linked by sloped, curving track:
 7. **Drop and catch**: a jump across a gap; short jumps land in a slower recovery path that rejoins.
 8. **Bumpy road**: washboard of speed bumps.
 9. **Spiral**: 2.75-turn banked corkscrew.
-10. **Bouncy pads**: a tilted springy pad throws marbles up onto a higher track; misses take a lower path.
+10. **Bouncy pads**: a tilted rubber pad throws marbles up onto a higher track; misses take a lower path.
 11. **Bottleneck**: narrows to a single-marble throat.
 12. **Finish**: sensor collider, then a walled basin.
 
@@ -64,12 +64,12 @@ How "nothing gets stuck" is handled, section by section:
 - **Loop**: there is a short gap in the floor at the foot of the loop. Fast
   marbles fly across; slow ones, and any that roll back out of the loop, drop
   through into a channel underneath that rejoins after the loop.
-- **Drop and catch / bouncy pads**: a wide, non-bouncy catch floor under the
-  jump feeds a gentler path that merges back in.
+- **Drop and catch / bouncy pads**: a wide catch floor with tall walls under
+  the jump feeds a gentler path that merges back in.
 - **Peg field**: every gap (peg to peg, peg to wall) is wider than two
   marbles, so pairs cannot wedge.
-- **Bottleneck**: asymmetric, frictionless walls, so two marbles arriving
-  together cannot lock into an arch.
+- **Bottleneck**: asymmetric walls, so two marbles arriving together meet
+  the narrowing at different points.
 - **Banked curves**: the bank is eased in no faster than the slope allows, so
   no edge of the track ever runs uphill.
 - **Safety net**: if a marble has not moved for 3.5 s it gets a nudge, and a
@@ -150,9 +150,12 @@ Four things I found by measurement that you should know before changing them:
    the loop.) `npm run physics-check` and `npm run sim` both fail if the
    energy gain comes back.
 
-The bouncy pad uses restitution 1.0 on a tilted surface: it converts forward
-speed into height rather than adding energy. (Restitution above 1 worked too,
-but a marble dropping straight down on it gained energy on every bounce.)
+**One rule for every contact.** Marbles have one set of properties and are
+never pushed or steered by the course (apart from the stuck-marble safety
+net). Every surface is ordinary track material (restitution 0.45, friction
+0.35) except the bouncy pad, which is rubber (0.85, 0.8). Every contact
+combines the two surfaces' values with Rapier's default average; no surface
+overrides the marble's own values.
 
 ## Testing
 

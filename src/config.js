@@ -44,14 +44,13 @@ export const TRACK = {
   step: 0.06, // sampling distance along swept tracks
 };
 
-// Catch floors under jumps: marbles should land and stay down, not bounce out.
-export const DEAD = { restitution: 0.05, restitutionMin: true };
-
-export const BOUNCY = {
-  // Close to perfectly elastic. The pad is tilted, so the bounce turns the
-  // marble's forward speed into height; no energy is invented.
-  restitution: 1.0,
-  friction: 0.05,
+// Every surface uses TRACK, except the bouncy pad, which is rubber. All
+// contacts combine the two surfaces' values the same way (Rapier's default
+// average), so a marble behaves the same wherever it is; only what it touches
+// differs.
+export const RUBBER = {
+  restitution: 0.85,
+  friction: 0.8,
 };
 
 export const RACE = {

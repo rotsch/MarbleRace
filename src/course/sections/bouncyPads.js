@@ -2,9 +2,9 @@ import { Vector3, Quaternion } from 'three';
 import { tracePath, makeFrame, framePoint, frameQuat, lastFrame, deg } from '../frame.js';
 import { buildTrack } from '../trackBuilder.js';
 import { rejoin } from './rejoin.js';
-import { BOUNCY, TRACK } from '../../config.js';
+import { RUBBER, TRACK } from '../../config.js';
 
-// Bouncy pads: the track ends over a springy pad that is tilted back towards
+// Bouncy pads: the track ends over a rubber pad that is tilted back towards
 // the incoming marbles. They drop onto it and the bounce turns their forward
 // speed into height, throwing them up onto a track section that is higher
 // than the one they came from. Marbles that arrive too slow fall short and
@@ -22,13 +22,13 @@ export function build(ctx, entry, opts = {}) {
   const a = makeFrame(lastFrame(approach).pos, entry.yaw, 0);
   const F = a.F;
 
-  // Thin bouncy skin on an ordinary base, so only the top face is springy.
-  const bouncy = { restitution: BOUNCY.restitution, restitutionMax: true, friction: BOUNCY.friction, frictionMin: true };
+  // Thin rubber skin on an ordinary base, so only the top face is rubber.
+  const rubber = { restitution: RUBBER.restitution, friction: RUBBER.friction };
   const tilt = new Quaternion().setFromAxisAngle(new Vector3(1, 0, 0), -(opts.tilt ?? deg(12)));
   const quat = frameQuat(a).multiply(tilt);
   const up = new Vector3(0, 1, 0).applyQuaternion(quat);
   const top = framePoint(a, 0, -fall, padStart + padLen / 2);
-  ctx.addBox(top.clone().addScaledVector(up, -0.015), quat, padWidth / 2, 0.015, padLen / 2, bouncy);
+  ctx.addBox(top.clone().addScaledVector(up, -0.015), quat, padWidth / 2, 0.015, padLen / 2, rubber);
   ctx.addBox(top.clone().addScaledVector(up, -0.075), quat, padWidth / 2, 0.045, padLen / 2);
 
   // Floor underneath that catches every miss.
@@ -46,7 +46,7 @@ export function build(ctx, entry, opts = {}) {
   ctx.setCamera(null);
   const { exit, lowFrames, mainFrames } = rejoin(ctx, {
     main: { pos: upper, yaw: a.yaw, width: 1.5, wideLen: 2.6, rail: 0.5 },
-    low: { pos: lowStart, dead: true, width: 3.0, wideLen: back + reach + 1.8, lead: back + reach + 0.8, rail: 0.7 },
+    low: { pos: lowStart, width: 3.0, wideLen: back + reach + 1.8, lead: back + reach + 0.8, rail: 0.7 },
     len: opts.len ?? 9,
   });
   ctx.addBoxAt(lowFrames[0], { x: 0, y: 0.31, z: -0.02 }, 1.5 + TRACK.railThickness, 0.35, 0.02);
