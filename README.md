@@ -73,10 +73,17 @@ How "nothing gets stuck" is handled, section by section:
   the narrowing at different points.
 - **Banked curves**: the bank is eased in no faster than the slope allows, so
   no edge of the track ever runs uphill.
-- **Safety net**: if a marble has not moved for 3.5 s it gets a nudge, and a
-  marble that leaves the course and reaches the room floor is put back on the
-  track where it left. `npm run sim` counts how often this happens (see
-  "Testing").
+- **Safety net**: if a marble has not moved for 3.5 s it gets a nudge, and
+  after two nudges it is moved a little further on. A marble that falls to
+  the room floor is put back 0.5 units behind the last place it touched the
+  track; if it falls at the same spot a third time, just past that spot
+  instead. Marbles that fall onto a lower part of the course carry on from
+  there. `npm run sim` counts how often this happens (see "Testing").
+- **Centre line**: one invisible line runs along the main route (ranking,
+  camera, rescues). Where the route jumps or drops through a hole, the line
+  bridges the gap through the air; those points are marked as not solid, and
+  a rescue only ever uses solid points that face up (never over a hole or on
+  the loop's ceiling).
 
 ## Code layout
 
