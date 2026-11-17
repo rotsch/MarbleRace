@@ -15,7 +15,7 @@ export class CourseContext {
     this.materials = materials;
     this.body = world.createRigidBody(RAPIER.RigidBodyDesc.fixed());
     this.group = materials ? new Group() : null;
-    this.path = []; // centre line: { pos, up, tangent, s, section }
+    this.path = []; // centre line: { pos, up, tangent, s, section, solid }
     this.sections = []; // { name, s0 }
     this.sectionName = 'start';
     this.cameraHint = null; // applied to path points recorded while set
@@ -138,11 +138,14 @@ export class CourseContext {
   }
 
   // Record centre-line frames for ranking, camera heading and rescue points.
+  // Frames of a built track have a track floor right under them: `solid`.
   addPath(frames) {
-    for (const f of frames) this.addPathPoint(f.pos, f.U, f.F);
+    for (const f of frames) this.addPathPoint(f.pos, f.U, f.F, true);
   }
 
-  addPathPoint(pos, up = new Vector3(0, 1, 0), tangent = null) {
+  // Points added directly (jumps, the funnel's hole) and the points bridging
+  // gaps between them are in the air: not `solid`, so never a rescue spot.
+  addPathPoint(pos, up = new Vector3(0, 1, 0), tangent = null, solid = false) {
     const prev = this.path[this.path.length - 1];
     const dist = prev ? prev.pos.distanceTo(pos) : 0;
     if (prev && dist < 1e-4) return;
@@ -152,10 +155,10 @@ export class CourseContext {
       const n = Math.ceil(dist / 0.1);
       for (let i = 1; i < n; i++) {
         const p = prev.pos.clone().lerp(pos, i / n);
-        this.path.push({ pos: p, up: new Vector3(0, 1, 0), tangent: null, s: prev.s + (dist * i) / n, section: this.sectionName, cam: this.cameraHint });
+        this.path.push({ pos: p, up: new Vector3(0, 1, 0), tangent: null, s: prev.s + (dist * i) / n, section: this.sectionName, cam: this.cameraHint, solid: false });
       }
     }
-    this.path.push({ pos: pos.clone(), up: up.clone(), tangent: tangent && tangent.clone(), s: (prev ? prev.s : 0) + dist, section: this.sectionName, cam: this.cameraHint });
+    this.path.push({ pos: pos.clone(), up: up.clone(), tangent: tangent && tangent.clone(), s: (prev ? prev.s : 0) + dist, section: this.sectionName, cam: this.cameraHint, solid });
   }
 
   // Lift the whole course so its lowest point sits `clearance` above the floor.

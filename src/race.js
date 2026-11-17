@@ -54,6 +54,7 @@ export class Race {
     for (const m of this.marbles) {
       snapshot(m);
       this._track(m);
+      if (!m.finished) this._touch(m);
       if (!m.finished) this._watchdog(m);
     }
   }
@@ -83,11 +84,25 @@ export class Race {
     if (m.progress > m.maxProgress) m.maxProgress = m.progress;
   }
 
+  // Remember where on the centre line a marble last touched the course
+  // (any course collider; other marbles do not count).
+  _touch(m) {
+    const course = this.course.body.handle;
+    let touching = false;
+    this.world.contactPairsWith(m.collider, (other) => {
+      if (touching || other.parent()?.handle !== course) return;
+      this.world.contactPair(m.collider, other, (manifold) => {
+        for (let k = 0; k < manifold.numContacts(); k++) if (manifold.contactDist(k) < 0.01) touching = true;
+      });
+    });
+    if (touching) m.lastTouch = m.pathIndex;
+  }
+
   // Last-resort safety net: nudge a marble that has not moved for a while,
-  // and put it back on the track if it left the course or nudging failed.
+  // and put it back on the track if it fell off the course or nudging failed.
   _watchdog(m) {
     const c = m.curr;
-    if (c.y < MARBLE.radius * 2.5) return this._rescue(m);
+    if (c.y < MARBLE.radius * 2.5) return this._rescue(m, 'fell');
     const a = m.anchor;
     const moved = Math.hypot(c.x - a.x, c.y - a.y, c.z - a.z);
     if (moved > RACE.stuckDistance) {
@@ -97,7 +112,7 @@ export class Race {
     }
     if (this.time - m.anchorTime < RACE.stuckSeconds) return;
     m.anchorTime = this.time;
-    if (m.nudges >= RACE.nudgesBeforeRescue) return this._rescue(m);
+    if (m.nudges >= RACE.nudgesBeforeRescue) return this._rescue(m, 'stuck');
     m.nudges++;
     const p = this.course.path[m.pathIndex];
     const k = m.body.mass() * 3;
@@ -105,25 +120,48 @@ export class Race {
     this.log.push({ time: this.time, marble: m.name, type: 'nudge', section: p.section });
   }
 
-  _rescue(m) {
+  // Puts a marble back on the centre line, only ever on a point with track
+  // floor under it that faces up (never over a hole, mid-jump or on the
+  // ceiling of the loop).
+  //  fell:  a little behind where it last touched the track. If it keeps
+  //         falling at the same spot, past that spot instead.
+  //  stuck: a little ahead of where it is, past whatever holds it.
+  _rescue(m, why) {
     const path = this.course.path;
-    // Each rescue places the marble a little further along, so it cannot loop.
-    let i = m.pathIndex;
-    const target = Math.max(m.progress, m.maxProgress - 1) + 0.5 + m.rescues * 0.5;
     const cap = this.course.finishIndex - 8; // never drop a marble past the finish line
-    while (i < cap && path[i].s < target) i++;
-    i = Math.min(i, cap);
+    const safe = (i) => path[i].solid && path[i].up.y > 0.6; // up to ~53 deg slope
+    const ahead = (from, dist) => {
+      let i = from;
+      while (i < cap && (path[i].s < path[from].s + dist || !safe(i))) i++;
+      return Math.min(i, cap);
+    };
+    let i;
+    if (why === 'fell') {
+      const from = m.lastTouch ?? m.pathIndex;
+      if (m.fallSpot !== null && Math.abs(path[from].s - path[m.fallSpot].s) < 1) m.fallsHere++;
+      else { m.fallSpot = from; m.fallsHere = 1; }
+      if (m.fallsHere <= RACE.fallsBeforeSkip) {
+        i = from;
+        while (i > 0 && (path[i].s > path[from].s - RACE.rescueBack || !safe(i))) i--;
+        if (!safe(i)) i = ahead(from, 0);
+      } else {
+        i = ahead(from, 0.5);
+      }
+    } else {
+      i = ahead(m.pathIndex, 0.5 + m.rescues * 0.5);
+    }
     const p = path[i];
     const pos = p.pos.clone().addScaledVector(p.up, MARBLE.radius * 2.5);
     m.body.setTranslation(pos, true);
     m.body.setLinvel({ x: 0, y: 0, z: 0 }, true);
     m.body.setAngvel({ x: 0, y: 0, z: 0 }, true);
     m.pathIndex = i;
+    m.lastTouch = i;
     m.nudges = 0;
     m.rescues++;
     m.anchor = { x: pos.x, y: pos.y, z: pos.z };
     m.anchorTime = this.time;
-    this.log.push({ time: this.time, marble: m.name, type: 'rescue', section: p.section, s: p.s });
+    this.log.push({ time: this.time, marble: m.name, type: 'rescue', why, section: p.section, s: p.s });
   }
 
   // Finished marbles first (by place), then by progress along the course.

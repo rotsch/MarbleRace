@@ -58,6 +58,8 @@ export const RACE = {
   stuckSeconds: 3.5, // watchdog: no movement for this long counts as stuck
   stuckDistance: 0.12,
   nudgesBeforeRescue: 2,
+  rescueBack: 0.5, // a fallen marble goes back on this far behind where it left the track
+  fallsBeforeSkip: 2, // after this many falls at one spot, put it back past the spot
 };
 
 export const COLORS = [

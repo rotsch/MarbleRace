@@ -45,6 +45,9 @@ export function createMarbles(RAPIER, world, spawnPoints, rng) {
       anchorTime: 0,
       nudges: 0,
       rescues: 0,
+      lastTouch: null, // path index where it last touched the course
+      fallSpot: null, // path index of its last fall, and how often it fell there
+      fallsHere: 0,
     });
   }
   return marbles;
