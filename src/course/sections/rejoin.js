@@ -53,7 +53,7 @@ export function rejoin(ctx, { main, low, len, lowPitch = 0.05, mainSide }) {
   });
   const mainFrames = tracePath({ pos: main.pos, yaw, pitch: -mainPitch }, mainSegs);
   buildTrack(ctx, mainFrames, {
-    width: widthStops([[0, main.width ?? TRACK.width], [1.2, TRACK.width]]),
+    width: widthStops([[0, main.width ?? TRACK.width], [main.wideLen ?? 0, main.width ?? TRACK.width], [(main.wideLen ?? 0) + 1.2, TRACK.width]]),
     rail: main.rail ?? 0.3,
   });
   const center = {

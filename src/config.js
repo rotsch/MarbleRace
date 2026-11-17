@@ -41,7 +41,9 @@ export const TRACK = {
 };
 
 export const BOUNCY = {
-  restitution: 1.22, // > 1 so pads add energy and lift marbles to a higher track
+  // Close to perfectly elastic. The pad is tilted, so the bounce turns the
+  // marble's forward speed into height; no energy is invented.
+  restitution: Number(globalThis.process?.env?.PAD_E ?? 1.0),
   friction: 0.05,
 };
 
