@@ -144,4 +144,32 @@ incident, and checks that running the same seed twice gives identical results.
 `npm run sim -- --layout bottleneck --seeds 150` stress-tests one section with
 all 8 marbles arriving together.
 
-Results from the last runs are in the section below.
+### Last measured results
+
+Full course, seeds `seed-1` to `seed-100` (800 marbles):
+
+- 800 of 800 finished; a race takes about 26 to 30 s.
+- 0 stalls (the nudge never fired).
+- 2 marbles (0.25%) left the track and were put back (one at the loop, one at the pads).
+- Same seed run twice: identical order and times. Also checked in the browser.
+- Routes: loop completed 789, bypass 11. Drop caught 676, recovery path 124.
+  Pads reached the upper track 766, lower path 5. Splitter long 580, short 220.
+
+Single sections with all 8 marbles arriving in a pack, which is harsher than
+the real course:
+
+| Section | Marbles | Stalls | Put back | Notes |
+|---|---|---|---|---|
+| Peg field | 1200 | 0 | 0 | |
+| Funnel | 1200 | 0 | 0 | |
+| Loop | 1200 | 0 | 1 | 1113 completed, 87 bypass |
+| Half-pipe | 1200 | 0 | 0 | |
+| Splitter | 1200 | 0 | 0 | 602 long, 598 short |
+| Drop and catch | 800 | 0 | 0 | 783 caught, 16 recovery |
+| Bumpy road | 800 | 0 | 0 | |
+| Spiral | 800 | 0 | 0 | |
+| Bouncy pads | 800 | 0 | 11 | 494 up, 263 lower path; the slow test run-in suits it less than the real approach |
+| Bottleneck | 1200 | 0 | 0 | |
+
+The pads figure is from before the last round of rail changes elsewhere; the
+pads themselves were not changed after it.
