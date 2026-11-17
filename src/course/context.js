@@ -23,6 +23,7 @@ export class CourseContext {
     this.bounds = { min: new Vector3(Infinity, Infinity, Infinity), max: new Vector3(-Infinity, -Infinity, -Infinity) };
     this.sensors = new Map(); // collider handle -> name
     this.cameraHints = [];
+    this.zones = []; // see addZone
     this.spawn = null;
   }
 
@@ -41,6 +42,13 @@ export class CourseContext {
   setCamera(hint) {
     this.cameraHint = hint;
     if (hint && !this.cameraHints.includes(hint)) this.cameraHints.push(hint);
+  }
+
+  // A stretch of course a marble must not linger in (the valley). While its
+  // progress is between s0 and s1 the race times it; after `seconds` it goes
+  // back to path index `restart`, the second time to `skip`.
+  addZone(zone) {
+    this.zones.push(zone);
   }
 
   _grow(x, y, z) {

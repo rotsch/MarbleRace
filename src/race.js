@@ -55,7 +55,7 @@ export class Race {
       snapshot(m);
       this._track(m);
       if (!m.finished) this._touch(m);
-      if (!m.finished) this._watchdog(m);
+      if (!m.finished) this._watchdog(m, this._zones(m));
     }
   }
 
@@ -98,12 +98,37 @@ export class Race {
     if (touching) m.lastTouch = m.pathIndex;
   }
 
+  // Zones (the valley): a marble that stays in one too long goes back to its
+  // start; if that happens to it a second time, it goes past the zone.
+  // Returns whether the marble is in a zone.
+  _zones(m) {
+    const z = this.course.zones.find((z) => m.progress >= z.s0 && m.progress < z.s1);
+    if (!z) {
+      m.zoneTime = 0;
+      return false;
+    }
+    m.zoneTime += PHYSICS.timestep;
+    if (m.zoneTime < z.seconds) return true;
+    const tries = (m.zoneTries[z.name] = (m.zoneTries[z.name] ?? 0) + 1);
+    this._place(m, tries === 1 ? z.restart : z.skip);
+    m.zoneTime = 0;
+    const p = this.course.path[m.pathIndex];
+    this.log.push({ time: this.time, marble: m.name, type: tries === 1 ? 'back to start' : 'skipped', section: p.section, s: p.s });
+    return true;
+  }
+
   // Last-resort safety net: nudge a marble that has not moved for a while,
   // and put it back on the track if it fell off the course or nudging failed.
-  _watchdog(m) {
+  // In a zone only the fall check applies; the zone's own timer does the rest.
+  _watchdog(m, inZone = false) {
     const c = m.curr;
     if (c.y < MARBLE.radius * 2.5) return this._rescue(m, 'fell');
     const a = m.anchor;
+    if (inZone) {
+      a.x = c.x; a.y = c.y; a.z = c.z;
+      m.anchorTime = this.time;
+      return;
+    }
     const moved = Math.hypot(c.x - a.x, c.y - a.y, c.z - a.z);
     if (moved > RACE.stuckDistance) {
       a.x = c.x; a.y = c.y; a.z = c.z;
@@ -150,18 +175,25 @@ export class Race {
     } else {
       i = ahead(m.pathIndex, 0.5 + m.rescues * 0.5);
     }
+    this._place(m, i);
+    m.rescues++;
     const p = path[i];
+    this.log.push({ time: this.time, marble: m.name, type: 'rescue', why, section: p.section, s: p.s });
+  }
+
+  // Put a marble at rest just above centre-line point i.
+  _place(m, i) {
+    const p = this.course.path[i];
     const pos = p.pos.clone().addScaledVector(p.up, MARBLE.radius * 2.5);
     m.body.setTranslation(pos, true);
     m.body.setLinvel({ x: 0, y: 0, z: 0 }, true);
     m.body.setAngvel({ x: 0, y: 0, z: 0 }, true);
     m.pathIndex = i;
+    m.progress = p.s;
     m.lastTouch = i;
     m.nudges = 0;
-    m.rescues++;
     m.anchor = { x: pos.x, y: pos.y, z: pos.z };
     m.anchorTime = this.time;
-    this.log.push({ time: this.time, marble: m.name, type: 'rescue', why, section: p.section, s: p.s });
   }
 
   // Finished marbles first (by place), then by progress along the course.

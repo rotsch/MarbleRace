@@ -42,7 +42,8 @@ Node 18 or newer.
 
 URL parameters: `?seed=42` picks the starting seed; `?layout=loop` loads one
 section on its own (`pegField`, `funnel`, `loop`, `halfPipe`, `splitter`,
-`dropCatch`, `bumpyRoad`, `spiral`, `bouncyPads`, `bottleneck`).
+`dropCatch`, `bumpyRoad`, `spiral`, `bouncyPads`, `bottleneck`, `winding`,
+`valley`, `bigJump`).
 
 ## The course
 
@@ -54,18 +55,32 @@ Top to bottom, linked by sloped, curving track:
 4. **Loop-the-loop** after a steep drop, with a bypass (see below).
 5. **Half-pipe**: marbles enter at an angle, swing wall to wall, leave through a slot.
 6. **Splitter**: a wedge sends marbles down a short path or a long detour; they merge again.
-7. **Drop and catch**: a jump across a gap; short jumps land in a slower recovery path that rejoins.
-8. **Bumpy road**: washboard of speed bumps.
-9. **Spiral**: 2.75-turn banked corkscrew.
-10. **Bouncy pads**: a tilted rubber pad throws marbles up onto a higher track; misses take a lower path.
-11. **Bottleneck**: narrows to a single-marble throat.
-12. **Finish**: sensor collider, then a walled basin.
+7. **Winding 1**: a long run of gentle banked bends, left and right.
+8. **Valley**: a sharp double bend as a brake, a steep fall that eases out into a flat middle, then a long climb to a crest a little lower than the top (see below).
+9. **Drop and catch**: a jump across a gap; short jumps land in a slower recovery path that rejoins.
+10. **Bumpy road**: washboard of speed bumps.
+11. **Spiral**: 2.75-turn banked corkscrew.
+12. **Bouncy pads**: a tilted rubber pad throws marbles up onto a higher track; misses take a lower path.
+13. **Big jump**: a long steep run that widens, a short upward kicker, and a big funnel that catches the marbles in the air. The funnel drains into a closed pipe that goes straight down, bends level, turns sideways and comes out on ordinary track.
+14. **Winding 2**: another long run of banked bends.
+15. **Bottleneck**: narrows to a single-marble throat.
+16. **Finish**: sensor collider, then a walled basin.
 
 S-bends (two sharp unbanked corners) sit between the fast sections and act
 as brakes.
 
 How "nothing gets stuck" is handled, section by section:
 
+- **Valley**: a marble alone always makes the crest (at about 4 units/s,
+  whatever speed it came in with, because the brake bends at the top even
+  that out). In a pack, marbles that lose speed in collisions can fall back
+  and roll to and fro in the middle. A marble that is still in the valley
+  after 6 s goes back to the top of the fall, at rest; if that happens to it
+  a second time, it is put just past the crest. In 20 races on
+  `--layout valley` (160 marbles), 8 fell back and were sent to the top, and
+  all of them made it the second time. The crest height (`climbLen` in
+  `sections/valley.js`) is sensitive: 2.9 sends none back, 3.0 about one in
+  seven, 3.1 most.
 - **Loop**: there is a short gap in the floor at the foot of the loop. Fast
   marbles fly across; slow ones, and any that roll back out of the loop, drop
   through into a channel underneath that rejoins after the loop.
@@ -77,7 +92,7 @@ How "nothing gets stuck" is handled, section by section:
   the narrowing at different points.
 - **Banked curves**: the bank is eased in no faster than the slope allows, so
   no edge of the track ever runs uphill.
-- **Safety net**: if a marble has not moved for 3.5 s it gets a nudge, and
+- **Safety net**: outside the valley, if a marble has not moved for 3.5 s it gets a nudge, and
   after two nudges it is moved a little further on. A marble that falls to
   the room floor is put back 0.5 units behind the last place it touched the
   track; if it falls at the same spot a third time, just past that spot
@@ -192,6 +207,10 @@ running the same seed twice gives identical results.
 all 8 marbles arriving together.
 
 ### Last measured results
+
+The full-course figures below are from before the winding tracks, the valley
+and the big jump were added; those three have not been raced as part of the
+full course yet (only the valley on its own, see above).
 
 Full course, seeds `seed-1` to `seed-100` (800 marbles):
 

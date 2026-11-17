@@ -48,6 +48,8 @@ export function createMarbles(RAPIER, world, spawnPoints, rng) {
       lastTouch: null, // path index where it last touched the course
       fallSpot: null, // path index of its last fall, and how often it fell there
       fallsHere: 0,
+      zoneTime: 0, // seconds spent in the current zone (see CourseContext.addZone)
+      zoneTries: {}, // zone name -> how often it was sent back from there
     });
   }
   return marbles;
