@@ -9,8 +9,10 @@ const val = (v, d, total, i) => (typeof v === 'function' ? v(d, total, i) : v);
 //  l, r    half-widths to the left and right of the centre line
 //  hl, hr  rail heights
 export function uProfile(l, r, hl, hr, t = TRACK.railThickness, tf = TRACK.floorThickness) {
-  hl = Math.max(hl, 0.012);
-  hr = Math.max(hr, 0.012);
+  // A rail height of 0 means an open side: the edge steps slightly down
+  // instead of up, so nothing stops a marble rolling off it.
+  if (hl < 0.012) hl = -0.012;
+  if (hr < 0.012) hr = -0.012;
   return [
     v2(l + t, -tf), v2(l + t, hl), v2(l, hl), v2(l, 0),
     v2(-r, 0), v2(-r, hr), v2(-r - t, hr), v2(-r - t, -tf),
@@ -35,7 +37,7 @@ export function buildTrack(ctx, frames, opts = {}) {
     // always steps slightly down/out onto a face, and never runs into the
     // leading edge of this mesh (the classic "ghost collision" at seams).
     const relief = opts.relief === false ? 0 : JOINT_RELIEF * Math.max(0, 1 - d / 0.35);
-    const prof = uProfile(w.l + relief, w.r + relief, h.l, h.r);
+    const prof = uProfile(w.l + relief, w.r + relief, h.l, h.r, TRACK.railThickness, opts.floorThickness);
     if (!profile0) profile0 = prof;
     return prof.map((p) => framePoint(f, p.x, p.y - relief, 0));
   });

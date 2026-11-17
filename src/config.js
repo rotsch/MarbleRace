@@ -32,7 +32,7 @@ export const MARBLE = {
 
 export const TRACK = {
   width: 0.6, // inner width between rails
-  railHeight: 0.2,
+  railHeight: 0.26,
   railThickness: 0.04,
   floorThickness: 0.04,
   friction: 0.35,

@@ -49,6 +49,8 @@ export function tracePath(start, segments, step = TRACK.step) {
     const p0 = pitch;
     const p1 = seg.pitch === undefined ? pitch : seg.pitch;
     const bank = seg.bank || 0;
+    const slope = p0 < 0 && p1 < 0 ? Math.tan(Math.min(-p0, -p1)) : 0;
+    const bankRate = (0.8 * slope) / (TRACK.width / 2);
     const n = Math.max(1, Math.ceil(seg.len / step));
     const ds = seg.len / n;
     for (let i = 1; i <= n; i++) {
@@ -60,8 +62,12 @@ export function tracePath(start, segments, step = TRACK.step) {
       pos.y += Math.tan(pm) * ds;
       pos.z += Math.cos(ym) * ds;
       d += ds;
-      const ease = smooth(Math.min(1, u / 0.25, (1 - u) / 0.25));
-      const f = makeFrame(pos, yaw + turn * u, lerp(p0, p1, smooth(u)), bank * ease);
+      // Bank ramps in and out linearly, no faster than the slope allows:
+      // twisting the floor tips one edge uphill by (half width * twist rate),
+      // and that must stay below the downhill slope or slow marbles would
+      // find a pocket at the edge of the track.
+      const b = Math.sign(bank) * Math.min(Math.abs(bank), bankRate * u * seg.len, bankRate * (1 - u) * seg.len);
+      const f = makeFrame(pos, yaw + turn * u, lerp(p0, p1, smooth(u)), b);
       f.d = d;
       frames.push(f);
     }

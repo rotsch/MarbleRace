@@ -8,23 +8,26 @@ import * as funnel from './sections/funnel.js';
 import * as splitter from './sections/splitter.js';
 import * as dropCatch from './sections/dropCatch.js';
 import * as bumpyRoad from './sections/bumpyRoad.js';
+import * as loop from './sections/loop.js';
 import * as finish from './sections/finish.js';
 
 // The course layout: an ordered chain of sections. Each section takes the exit
 // pose of the previous one, so sections can be reordered or retuned here.
 export function buildCourse(ctx) {
-  let f = { pos: new Vector3(0, 0, 0), yaw: 0, pitch: deg(-12) };
+  let f = { pos: new Vector3(0, 0, 0), yaw: 0, pitch: deg(-8) };
   const add = (name, mod, opts) => {
     ctx.section(name);
     f = mod.build(ctx, f, opts);
   };
 
-  add('Start', start, { len: 3 });
+  add('Start', start, { len: 2.6 });
   add('Peg field', pegField);
-  add('Curve 1', curve, { radius: 1.6, angle: deg(-70), pitch: deg(-8) });
+  add('Curve 1', curve, { radius: 1.6, angle: deg(-70), pitch: deg(-4) });
   add('Funnel', funnel, { side: 1, exitYaw: deg(-20) });
+  add('Loop', loop);
   add('Splitter', splitter, { side: -1 });
-  add('Curve 2', curve, { radius: 1.6, angle: deg(60), pitch: deg(-7) });
+  add('Curve 2', curve, { radius: 1.6, angle: deg(60), pitch: deg(-4) });
   add('Drop and catch', dropCatch);
+  add('Bumpy road', bumpyRoad);
   add('Finish', finish);
 }

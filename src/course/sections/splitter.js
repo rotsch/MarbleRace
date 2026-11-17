@@ -10,12 +10,12 @@ export function build(ctx, entry, opts = {}) {
   const side = opts.side ?? -1;
   const flareLen = 1.5;
   const wide = 2 * BRANCH_OFFSET + TRACK.width;
-  const flare = tracePath(entry, [{ len: flareLen, pitch: -0.16 }]);
-  buildTrack(ctx, flare, { width: widthStops([[0, TRACK.width], [flareLen, wide]]), rail: 0.26 });
+  const flare = tracePath(entry, [{ len: flareLen, pitch: -0.09 }]);
+  buildTrack(ctx, flare, { width: widthStops([[0, TRACK.width], [flareLen, wide]]), rail: 0.3 });
   const s = lastFrame(flare);
 
   // Wedge: knife edge pointing upstream, widening to cover the gap between branches.
-  const hw = BRANCH_OFFSET - TRACK.width / 2 + 0.02, h = 0.26;
+  const hw = BRANCH_OFFSET - TRACK.width / 2 + 0.02, h = 0.3;
   const pts = [];
   for (const y of [-0.03, h]) {
     pts.push(framePoint(s, 0, y, -0.85), framePoint(s, hw, y, 0), framePoint(s, -hw, y, 0));
@@ -33,16 +33,16 @@ export function build(ctx, entry, opts = {}) {
     arc(r, side * deg(90), { bank: side * 0.25 }),
   ];
   const advance = 4 * r;
-  const drop = Math.tan(deg(6.5)) * pathLength(longSegs);
-  const longStart = { pos: framePoint(s, side * BRANCH_OFFSET, 0, 0), yaw: s.yaw, pitch: -deg(6.5) };
-  buildTrack(ctx, tracePath(longStart, longSegs), { rail: 0.32, path: false });
+  const drop = Math.tan(deg(4)) * pathLength(longSegs);
+  const longStart = { pos: framePoint(s, side * BRANCH_OFFSET, 0, 0), yaw: s.yaw, pitch: -deg(4) };
+  buildTrack(ctx, tracePath(longStart, longSegs), { rail: 0.36, path: false });
   ctx.addSensorAt('splitter: long path', s, { x: side * BRANCH_OFFSET, y: 0.2, z: 0.5 }, 0.3, 0.25, 0.05);
 
   const shortStart = { pos: framePoint(s, -side * BRANCH_OFFSET, 0, 0), yaw: s.yaw, pitch: -Math.atan(drop / advance) };
   buildTrack(ctx, tracePath(shortStart, [{ len: advance }]));
   ctx.addSensorAt('splitter: short path', s, { x: -side * BRANCH_OFFSET, y: 0.2, z: 0.5 }, 0.3, 0.25, 0.05);
 
-  const center = { pos: s.pos.clone(), yaw: s.yaw, pitch: -0.14 };
+  const center = { pos: s.pos.clone(), yaw: s.yaw, pitch: -0.08 };
   center.pos.x += Math.sin(s.yaw) * advance;
   center.pos.z += Math.cos(s.yaw) * advance;
   center.pos.y -= drop;

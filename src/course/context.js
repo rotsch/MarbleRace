@@ -80,7 +80,7 @@ export class CourseContext {
 
   addBox(center, quat, hx, hy, hz, material) {
     const desc = this._place(this.RAPIER.ColliderDesc.cuboid(hx, hy, hz), center, quat);
-    this._visual(new BoxGeometry(hx * 2, hy * 2, hz * 2), center, quat);
+    if (material?.visual !== false) this._visual(new BoxGeometry(hx * 2, hy * 2, hz * 2), center, quat);
     return this._physics(desc, material);
   }
 
@@ -93,8 +93,13 @@ export class CourseContext {
   // Cylinder with its axis along the local Y of `quat`.
   addCylinder(center, quat, halfHeight, radius, material) {
     const desc = this._place(this.RAPIER.ColliderDesc.cylinder(halfHeight, radius), center, quat);
-    this._visual(new CylinderGeometry(radius, radius, halfHeight * 2, 20), center, quat);
+    if (material?.visual !== false) this._visual(new CylinderGeometry(radius, radius, halfHeight * 2, 20), center, quat);
     return this._physics(desc, material);
+  }
+
+  // Mesh + outline only, no collider.
+  addVisual(geometry, position, quaternion, edgeAngle) {
+    this._visual(geometry, position, quaternion, edgeAngle);
   }
 
   addHull(points, material) {

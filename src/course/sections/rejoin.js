@@ -9,8 +9,8 @@ const MERGE_WIDTH = 2 * BRANCH_OFFSET + TRACK.width;
 // Y-merge: two parallel tracks at +-BRANCH_OFFSET flow into one.
 export function merge(ctx, center, opts = {}) {
   const len = opts.len ?? 1.7;
-  const frames = tracePath(center, [{ len, pitch: opts.pitch ?? -0.14 }]);
-  buildTrack(ctx, frames, { width: widthStops([[0, MERGE_WIDTH], [len, TRACK.width]]), rail: 0.26, path: opts.path });
+  const frames = tracePath(center, [{ len, pitch: opts.pitch ?? -0.08 }]);
+  buildTrack(ctx, frames, { width: widthStops([[0, MERGE_WIDTH], [len, TRACK.width]]), rail: 0.3, path: opts.path });
   return lastFrame(frames);
 }
 
@@ -20,7 +20,7 @@ export function merge(ctx, center, opts = {}) {
 //  len:  forward distance from main.pos to the merge
 // Both descend to the same height: the low path at a gentle fixed slope, the
 // main track as steep as needed. Returns the exit pose after the merge.
-export function rejoin(ctx, { main, low, len, lowPitch = 0.07, mainSide }) {
+export function rejoin(ctx, { main, low, len, lowPitch = 0.05, mainSide }) {
   const yaw = main.yaw;
   const F = new Vector3(Math.sin(yaw), 0, Math.cos(yaw));
   const L = new Vector3(Math.cos(yaw), 0, -Math.sin(yaw));
@@ -48,18 +48,18 @@ export function rejoin(ctx, { main, low, len, lowPitch = 0.07, mainSide }) {
   const lowFrames = tracePath({ pos: low.pos, yaw, pitch: -lowPitch }, lowSegs);
   buildTrack(ctx, lowFrames, {
     width: widthStops([[0, low.width ?? TRACK.width], [lowWide, low.width ?? TRACK.width], [lowWide + 1.3, TRACK.width]]),
-    rail: 0.26,
+    rail: typeof low.rail === 'function' ? low.rail : (d) => (d < lowWide + 0.6 ? low.rail ?? 0.3 : 0.3),
     path: false,
   });
   const mainFrames = tracePath({ pos: main.pos, yaw, pitch: -mainPitch }, mainSegs);
   buildTrack(ctx, mainFrames, {
     width: widthStops([[0, main.width ?? TRACK.width], [1.2, TRACK.width]]),
-    rail: 0.26,
+    rail: main.rail ?? 0.3,
   });
   const center = {
     pos: main.pos.clone().addScaledVector(F, len).addScaledVector(L, c).setY(yMerge),
     yaw,
-    pitch: -0.14,
+    pitch: -0.08,
   };
   return { exit: merge(ctx, center), lowFrames, mainFrames, mainPitch };
 }
