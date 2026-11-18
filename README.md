@@ -48,7 +48,9 @@ Node 18 or newer.
 URL parameters: `?seed=42` picks the starting seed; `?layout=loop` loads one
 section on its own (`pegField`, `funnel`, `loop`, `halfPipe`, `splitter`,
 `dropCatch`, `bumpyRoad`, `spiral`, `bouncyPads`, `bottleneck`, `winding`,
-`valley`, `bigJump`); `?course=default` ignores the course saved by the editor.
+`valley`, `bigJump`, and the newer pieces `stairs`, `bumpers`, `waves`,
+`splitter3`, `wallRide`, `railRun`, `chicane`, `skiJump`, `corkscrew`,
+`tunnelDrop`); `?course=default` ignores the course saved by the editor.
 
 ## Track editor
 
@@ -90,6 +92,8 @@ longer lines up turns **red**.
   the piece's default), adds a piece after the selected one (inserted into the
   chain) or in front of the camera, detaches or deletes it, and lists problems
   (open outputs, inputs out of line).
+- The piece list is grouped (Track, Bends, Hills and drops, Obstacles,
+  Jumps, Splits and catches, Start and finish).
 - **Fork** has two outputs and **Merge** two inputs, for routes that split and
   meet again. Race progress follows the links, so marbles are ranked and
   rescued correctly on either route.
@@ -163,6 +167,36 @@ How "nothing gets stuck" is handled, section by section:
   bridges the gap through the air; those points are marked as not solid, and
   a rescue only ever uses solid points that face up (never over a hole or on
   the loop's ceiling).
+
+### Pieces for the editor
+
+These are in the editor's piece list (and `?layout=`), not in the default course.
+Their numbers are first settings and have not been measured in races yet.
+
+- **Stairs** (Track): treads that each end in a small drop onto the next;
+  steps, tread length, step height and tread slope are set in the editor.
+- **Gutter rails** (Track): the track narrows to single file onto two thin
+  round rails with open sides. Marbles knocked off land on a catch tray that
+  rejoins after the rails.
+- **Wall ride** (Bends): a steep run-in, then a tight bend whose outer wall
+  curves up into a tall quarter-pipe, so faster marbles ride higher.
+- **Chicane** (Bends): left, right twice as far, left again, unbanked, with
+  openings in the outer walls. Marbles too fast to hold the bend drop onto a
+  catch tray that rejoins after it.
+- **Corkscrew** (Bends): a see-through tube winding round a line that runs
+  ahead and down, steep enough that the tube is downhill everywhere, so
+  nothing can stop in it; brake bends after it.
+- **Wave track** (Hills and drops): small valleys in a row, each crest lower
+  than the one before; like the valley, a marble that lingers is sent back to
+  the start of the piece, the second time past it.
+- **Tunnel drop** (Hills and drops): the track ends over a cone that drops the
+  marbles into a see-through tube: straight down, a bend to level, an
+  optional sideways turn, then out onto track.
+- **Pinball bumpers** (Obstacles): a wide table with large rubber bumpers.
+- **Ski jump** (Jumps): in-run, a take-off table, a landing hill that falls
+  away faster than the marbles do, distance stripes, brake bends after.
+- **Three-way splitter** (Splits and catches): a straight middle lane and a
+  short and a long loop either side, all meeting again.
 
 ## Code layout
 

@@ -20,6 +20,16 @@ import * as valley from './sections/valley.js';
 import * as bigJump from './sections/bigJump.js';
 import * as fork from './sections/fork.js';
 import * as merge from './sections/merge.js';
+import * as stairs from './sections/stairs.js';
+import * as bumpers from './sections/bumpers.js';
+import * as waves from './sections/waves.js';
+import * as splitter3 from './sections/splitter3.js';
+import * as wallRide from './sections/wallRide.js';
+import * as railRun from './sections/railRun.js';
+import * as chicane from './sections/chicane.js';
+import * as skiJump from './sections/skiJump.js';
+import * as corkscrew from './sections/corkscrew.js';
+import * as tunnelDrop from './sections/tunnelDrop.js';
 
 // The course as data: placed pieces and the links between their sockets.
 //
@@ -45,25 +55,86 @@ export const COURSE_VERSION = 1;
 const f = (key, label, kind, min, max, step, def) => ({ key, label, kind, min, max, step, def });
 const SIDE = (def = 1) => f('side', 'Side', 'side', -1, 1, 2, def);
 
+// Each type sits in a group of the editor's piece list (`group`).
+export const GROUPS = ['Track', 'Bends', 'Hills and drops', 'Obstacles', 'Jumps', 'Splits and catches', 'Start and finish'];
+
 export const TYPES = {
-  start: { label: 'Start ramp', module: start, noInput: true, fields: [f('len', 'Length', 'len', 1.5, 5, 0.1, 3)] },
+  // Track
   straight: {
-    label: 'Straight', module: straight,
+    label: 'Straight', group: 'Track', module: straight,
     fields: [f('len', 'Length', 'len', 0.3, 8, 0.1, 2), f('pitch', 'Slope', 'deg', -30, 5, 0.5, null)],
   },
+  stairs: {
+    label: 'Stairs', group: 'Track', module: stairs,
+    fields: [
+      f('steps', 'Steps', 'num', 1, 12, 1, 6),
+      f('tread', 'Tread length', 'len', 0.3, 1.5, 0.05, 0.6),
+      f('rise', 'Step height', 'len', 0.05, 0.4, 0.01, 0.15),
+      f('pitch', 'Tread slope', 'deg', -20, -3, 0.5, -8),
+    ],
+  },
+  railRun: {
+    label: 'Gutter rails', group: 'Track', module: railRun,
+    fields: [
+      f('len', 'Rail length', 'len', 1, 6, 0.1, 3),
+      f('pitch', 'Slope', 'deg', -15, -2, 0.5, -6),
+      f('gap', 'Rail spacing', 'len', 0.08, 0.17, 0.005, 0.12),
+      f('drop', 'Catch tray below', 'len', 0.4, 1, 0.05, 0.5),
+    ],
+  },
+  // Bends
   curve: {
-    label: 'Curve', module: curve,
+    label: 'Curve', group: 'Bends', module: curve,
     fields: [
       f('radius', 'Radius', 'len', 0.4, 4, 0.05, 1.5),
       f('angle', 'Angle (+ left)', 'deg', -270, 270, 5, 90),
       f('pitch', 'Slope', 'deg', -20, 5, 0.5, null),
     ],
   },
-  pegField: { label: 'Peg field', module: pegField, fields: [f('len', 'Length', 'len', 1.5, 6, 0.1, 3.2), f('width', 'Width', 'len', 1, 3, 0.1, 2.2)] },
-  funnel: { label: 'Funnel', module: funnel, fields: [SIDE(), f('exitTurn', 'Exit turn', 'deg', -180, 180, 5, 0), f('rim', 'Rim radius', 'len', 1, 2.5, 0.05, 1.5)] },
-  loop: { label: 'Loop', module: loop, fields: [f('radius', 'Radius', 'len', 0.4, 0.8, 0.01, 0.55), f('gap', 'Bypass gap', 'len', 0.2, 0.5, 0.01, 0.34)] },
+  winding: { label: 'Winding', group: 'Bends', module: winding, fields: [f('pitch', 'Slope', 'deg', -10, 0, 0.5, -3.5), f('straight', 'Straights', 'len', 0, 2, 0.05, 0.5)] },
+  wallRide: {
+    label: 'Wall ride', group: 'Bends', module: wallRide,
+    fields: [
+      f('angle', 'Angle (+ left)', 'deg', -240, 240, 5, 150),
+      f('radius', 'Radius', 'len', 0.5, 2.5, 0.05, 0.9),
+      f('wall', 'Wall curve radius', 'len', 0.15, 0.8, 0.05, 0.45),
+      f('height', 'Wall height', 'len', 0.4, 1.4, 0.05, 0.8),
+      f('pitch', 'Slope', 'deg', -12, 0, 0.5, -5),
+      f('leadLen', 'Run-in length', 'len', 0.4, 3, 0.1, 1.4),
+      f('leadPitch', 'Run-in slope', 'deg', -30, -3, 0.5, -18),
+    ],
+  },
+  chicane: {
+    label: 'Chicane', group: 'Bends', module: chicane,
+    fields: [
+      SIDE(),
+      f('radius', 'Radius', 'len', 0.4, 1.2, 0.05, 0.6),
+      f('angle', 'Bend angle', 'deg', 30, 80, 5, 60),
+      f('gap', 'Wall opening', 'len', 0, 1.5, 0.05, 0.5),
+      f('drop', 'Catch tray below', 'len', 0.4, 1, 0.05, 0.55),
+    ],
+  },
+  funnel: { label: 'Funnel', group: 'Bends', module: funnel, fields: [SIDE(), f('exitTurn', 'Exit turn', 'deg', -180, 180, 5, 0), f('rim', 'Rim radius', 'len', 1, 2.5, 0.05, 1.5)] },
+  spiral: {
+    label: 'Spiral', group: 'Bends', module: spiral,
+    fields: [
+      SIDE(), f('turns', 'Turns', 'num', 0.5, 5, 0.25, 2.75), f('radius', 'Radius', 'len', 0.7, 2, 0.05, 1.0),
+      f('pitch', 'Steepness', 'deg', -20, -3, 0.5, -8.5),
+      f('tunnel', 'Tunnel (closed)', 'bool'),
+    ],
+  },
+  corkscrew: {
+    label: 'Corkscrew', group: 'Bends', module: corkscrew,
+    fields: [
+      SIDE(),
+      f('turns', 'Turns', 'num', 0.5, 3, 0.5, 1),
+      f('radius', 'Winding radius', 'len', 0.1, 0.5, 0.05, 0.25),
+      f('turnLen', 'Length per turn', 'len', 1.2, 4, 0.1, 2.0),
+      f('brake', 'Brake bend radius (0 = none)', 'len', 0, 1, 0.05, 0.55),
+    ],
+  },
   halfPipe: {
-    label: 'Half-pipe', module: halfPipe,
+    label: 'Half-pipe', group: 'Bends', module: halfPipe,
     fields: [
       SIDE(), f('len', 'Length', 'len', 3, 10, 0.1, 7), f('radius', 'Radius', 'len', 0.6, 1.6, 0.05, 1.1),
       f('angle', 'Entry angle', 'deg', 0, 60, 1, 30),
@@ -72,10 +143,9 @@ export const TYPES = {
       f('leadTurn', 'Lead-in turn (+ left)', 'deg', -90, 90, 5, 0),
     ],
   },
-  splitter: { label: 'Splitter', module: splitter, fields: [SIDE(-1), f('leg', 'Detour leg', 'len', 0.3, 2, 0.05, 0.8)] },
-  winding: { label: 'Winding', module: winding, fields: [f('pitch', 'Slope', 'deg', -10, 0, 0.5, -3.5), f('straight', 'Straights', 'len', 0, 2, 0.05, 0.5)] },
+  // Hills and drops
   valley: {
-    label: 'Valley', module: valley,
+    label: 'Valley', group: 'Hills and drops', module: valley,
     fields: [
       f('steep', 'Drop slope', 'num', 20, 70, 1, 48),
       f('climb', 'Climb slope', 'num', 10, 50, 1, 34),
@@ -83,25 +153,67 @@ export const TYPES = {
       f('rise', 'Crest rise', 'len', 0.8, 4, 0.05, null),
     ],
   },
-  dropCatch: { label: 'Drop and catch', module: dropCatch, fields: [f('gap', 'Gap', 'len', 0.5, 1.4, 0.01, 0.91), f('drop', 'Drop', 'len', 0.3, 1, 0.01, 0.6)] },
-  bumpyRoad: { label: 'Bumpy road', module: bumpyRoad, fields: [f('len', 'Length', 'len', 1.5, 6, 0.1, 3.4)] },
-  spiral: {
-    label: 'Spiral', module: spiral,
+  waves: {
+    label: 'Wave track', group: 'Hills and drops', module: waves,
     fields: [
-      SIDE(), f('turns', 'Turns', 'num', 0.5, 5, 0.25, 2.75), f('radius', 'Radius', 'len', 0.7, 2, 0.05, 1.0),
-      f('pitch', 'Steepness', 'deg', -20, -3, 0.5, -8.5),
-      f('tunnel', 'Tunnel (closed)', 'bool'),
+      f('waves', 'Waves', 'num', 1, 8, 1, 3),
+      f('depth', 'Dip depth', 'len', 0.15, 1, 0.05, 0.45),
+      f('drop', 'Each crest lower by', 'len', 0.05, 0.5, 0.01, 0.15),
+      f('down', 'Fall slope', 'num', 10, 50, 1, 30),
+      f('up', 'Climb slope', 'num', 10, 45, 1, 25),
     ],
   },
-  bouncyPads: { label: 'Bouncy pads', module: bouncyPads, fields: [] },
-  bigJump: { label: 'Big jump', module: bigJump, fields: [SIDE(), f('kick', 'Kicker angle', 'num', 10, 35, 1, 22)] },
+  tunnelDrop: {
+    label: 'Tunnel drop', group: 'Hills and drops', module: tunnelDrop,
+    fields: [f('depth', 'Drop depth', 'len', 0.3, 4, 0.1, 1.2), f('exitTurn', 'Exit turn (+ left)', 'deg', -180, 180, 5, 0)],
+  },
+  // Obstacles
+  pegField: { label: 'Peg field', group: 'Obstacles', module: pegField, fields: [f('len', 'Length', 'len', 1.5, 6, 0.1, 3.2), f('width', 'Width', 'len', 1, 3, 0.1, 2.2)] },
+  bumpers: {
+    label: 'Pinball bumpers', group: 'Obstacles', module: bumpers,
+    fields: [
+      f('len', 'Table length', 'len', 1.5, 6, 0.1, 3.2),
+      f('width', 'Table width', 'len', 1.4, 3.5, 0.1, 2.4),
+      f('radius', 'Bumper radius', 'len', 0.06, 0.3, 0.01, 0.14),
+      f('pitch', 'Slope', 'deg', -20, -5, 0.5, -11),
+    ],
+  },
+  bumpyRoad: { label: 'Bumpy road', group: 'Obstacles', module: bumpyRoad, fields: [f('len', 'Length', 'len', 1.5, 6, 0.1, 3.4)] },
   bottleneck: {
-    label: 'Bottleneck', module: bottleneck,
+    label: 'Bottleneck', group: 'Obstacles', module: bottleneck,
     fields: [SIDE(), f('gap', 'Throat width', 'len', +(MARBLE.radius * 2.15).toFixed(3), 0.6, 0.01, +(MARBLE.radius * 2.6).toFixed(3))],
   },
-  fork: { label: 'Fork (2 outputs)', module: fork, fields: [f('len', 'Length', 'len', 1, 3, 0.1, 1.5)] },
-  merge: { label: 'Merge (2 inputs)', module: merge, fields: [f('len', 'Length', 'len', 1, 3, 0.1, 1.7)] },
-  finish: { label: 'Finish', module: finish, noOutput: true, fields: [] },
+  loop: { label: 'Loop', group: 'Obstacles', module: loop, fields: [f('radius', 'Radius', 'len', 0.4, 0.8, 0.01, 0.55), f('gap', 'Bypass gap', 'len', 0.2, 0.5, 0.01, 0.34)] },
+  // Jumps
+  skiJump: {
+    label: 'Ski jump', group: 'Jumps', module: skiJump,
+    fields: [
+      f('inLen', 'In-run length', 'len', 0.5, 3, 0.1, 1.4),
+      f('inPitch', 'In-run slope', 'deg', -40, -10, 0.5, -28),
+      f('table', 'Take-off angle', 'deg', -20, 5, 0.5, -8),
+      f('hillLen', 'Landing hill length', 'len', 0.8, 3.5, 0.1, 1.6),
+      f('hillPitch', 'Landing hill slope', 'deg', -45, -20, 0.5, -34),
+      f('brake', 'Brake bend radius (0 = none)', 'len', 0, 1, 0.05, 0.55),
+    ],
+  },
+  bigJump: { label: 'Big jump', group: 'Jumps', module: bigJump, fields: [SIDE(), f('kick', 'Kicker angle', 'num', 10, 35, 1, 22)] },
+  dropCatch: { label: 'Drop and catch', group: 'Jumps', module: dropCatch, fields: [f('gap', 'Gap', 'len', 0.5, 1.4, 0.01, 0.91), f('drop', 'Drop', 'len', 0.3, 1, 0.01, 0.6)] },
+  bouncyPads: { label: 'Bouncy pads', group: 'Jumps', module: bouncyPads, fields: [] },
+  // Splits and catches
+  fork: { label: 'Fork (2 outputs)', group: 'Splits and catches', module: fork, fields: [f('len', 'Length', 'len', 1, 3, 0.1, 1.5)] },
+  merge: { label: 'Merge (2 inputs)', group: 'Splits and catches', module: merge, fields: [f('len', 'Length', 'len', 1, 3, 0.1, 1.7)] },
+  splitter: { label: 'Splitter', group: 'Splits and catches', module: splitter, fields: [SIDE(-1), f('leg', 'Detour leg', 'len', 0.3, 2, 0.05, 0.8)] },
+  splitter3: {
+    label: 'Three-way splitter', group: 'Splits and catches', module: splitter3,
+    fields: [
+      f('radius', 'Loop radius', 'len', 0.8, 1.6, 0.05, 1.0),
+      f('leftLeg', 'Left loop leg', 'len', 0, 2.5, 0.05, 0.5),
+      f('rightLeg', 'Right loop leg', 'len', 0, 2.5, 0.05, 1.2),
+    ],
+  },
+  // Start and finish
+  start: { label: 'Start ramp', group: 'Start and finish', module: start, noInput: true, fields: [f('len', 'Length', 'len', 1.5, 5, 0.1, 3)] },
+  finish: { label: 'Finish', group: 'Start and finish', module: finish, noOutput: true, fields: [] },
 };
 
 // Today's course and the single-section test layouts, as data. Every piece
@@ -127,6 +239,16 @@ const SINGLE = {
   winding: ['winding'],
   valley: ['valley'],
   bigJump: ['bigJump'],
+  stairs: ['stairs'],
+  bumpers: ['bumpers'],
+  waves: ['waves'],
+  splitter3: ['splitter3'],
+  wallRide: ['wallRide'],
+  railRun: ['railRun'],
+  chicane: ['chicane'],
+  skiJump: ['skiJump'],
+  corkscrew: ['corkscrew'],
+  tunnelDrop: ['tunnelDrop'],
 };
 export const LAYOUTS = ['full', ...Object.keys(SINGLE)];
 

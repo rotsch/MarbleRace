@@ -1,4 +1,4 @@
-import { TYPES } from './course/pieces.js';
+import { TYPES, GROUPS } from './course/pieces.js';
 import { Editor } from './editor.js';
 
 // The track editor's panel: piece list, the selected piece's options,
@@ -17,8 +17,14 @@ export class EditorPanel {
     this.problems = $('ed-problems');
     this.shownPiece = null;
 
+    // Piece types by group, in the order of GROUPS.
     $('ed-type').replaceChildren(
-      ...Object.entries(TYPES).map(([key, t]) => new Option(t.label, key))
+      ...GROUPS.map((g) => {
+        const og = document.createElement('optgroup');
+        og.label = g;
+        og.append(...Object.entries(TYPES).filter(([, t]) => t.group === g).map(([key, t]) => new Option(t.label, key)));
+        return og;
+      })
     );
     $('ed-type').value = 'straight';
     const act = (id, fn) => $(id).addEventListener('click', (e) => {
