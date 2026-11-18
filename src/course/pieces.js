@@ -388,6 +388,23 @@ export function linkMaps(data) {
 // Build every piece into the course context. Pieces are built from each
 // free piece (no link into in 0) along the links, depth first and outputs in
 // order, so the recorded centre line runs in race order.
+// Build one piece into the course context at `entry`. `upId`: the piece
+// whose output feeds this one's in 0 (its centre line carries on from
+// there), or null. Returns the piece's exit poses.
+export function appendPiece(ctx, piece, entry, upId = null) {
+  const type = TYPES[piece.type];
+  if (!type) throw new Error(`unknown piece type "${piece.type}"`);
+  ctx.pathFrom = upId ? ctx.pieces.get(upId)?.lastPath ?? null : null;
+  const sections0 = ctx.sections.length;
+  if (ctx.sectionName !== piece.name) ctx.section(piece.name);
+  ctx.beginPiece(piece, entry, type);
+  ctx.piece.sections0 = sections0; // for CourseContext.undoLastPiece
+  const result = type.module.build(ctx, entry, safeOpts(type, piece.opts));
+  const exits = type.noOutput ? [] : result?.exits ?? [result];
+  ctx.endPiece(exits);
+  return exits;
+}
+
 export function buildFromData(ctx, data) {
   const byId = new Map(data.pieces.map((p) => [p.id, p]));
   const { into, from } = linkMaps(data);
@@ -395,16 +412,8 @@ export function buildFromData(ctx, data) {
   const visit = (piece, entry) => {
     if (built.has(piece.id)) return;
     built.add(piece.id);
-    const type = TYPES[piece.type];
-    if (!type) throw new Error(`unknown piece type "${piece.type}"`);
     // The centre line carries on from the piece this one is linked to.
-    const up = into.get(`${piece.id}:0`);
-    ctx.pathFrom = up ? ctx.pieces.get(up[0])?.lastPath ?? null : null;
-    if (ctx.sectionName !== piece.name) ctx.section(piece.name);
-    ctx.beginPiece(piece, entry, type);
-    const result = type.module.build(ctx, entry, safeOpts(type, piece.opts));
-    const exits = type.noOutput ? [] : result?.exits ?? [result];
-    ctx.endPiece(exits);
+    const exits = appendPiece(ctx, piece, entry, into.get(`${piece.id}:0`)?.[0] ?? null);
     exits.forEach((exit, i) => {
       for (const [toId, inIdx] of from.get(`${piece.id}:${i}`) ?? []) {
         const next = byId.get(toId);

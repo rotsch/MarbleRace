@@ -16,23 +16,27 @@ import { loadTrack } from './tracks.js';
 import { RaceSetup } from './setup.js';
 import { Lineup } from './lineup.js';
 import { Painter } from './painter.js';
+import { loadGraphics } from './graphics.js';
 
 loadStored(); // physics values the player set last time
 
 await initPhysics(RAPIER);
 
 const params = new URLSearchParams(location.search);
-const view = new View(document.getElementById('scene'));
+const graphics = loadGraphics(); // quality settings kept in this browser
+const view = new View(document.getElementById('scene'), graphics);
+window.view = view; // console access, like window.race
 const rig = new CameraRig(view.camera, view.renderer.domElement);
 const stepper = new FixedStepper();
 let race = null;
 const lineup = new Lineup(document.getElementById('lineup'));
+lineup.setResolution(Number(graphics.resolution));
 const seedValue = () => ui.seed.value.trim() || '1';
 
 // Race setup (number of marbles, names, designs), shown on the start line.
 const setup = new RaceSetup({
   // A different number of marbles needs a different start grid: rebuild.
-  onCount: () => restart(seedValue(), false),
+  onRebuild: () => restart(seedValue(), false),
   onEntry: (i) => {
     const m = race?.marbles[i];
     if (!m) return;
@@ -134,7 +138,7 @@ function updateStartLights(now) {
 // Sound: what the race did since the last frame, turned into sound.
 const sound = new Sound();
 // Counters of what has already been played, reset with every race.
-const heard = { lit: 0, go: false, results: 0, log: 0, over: false, overAt: 0 };
+const heard = { lit: 0, go: false, results: 0, log: 0, over: false, overAt: 0, crowd: false };
 // The crowd wakes when the leader is this close to the finish line (units of
 // course length, about 1 m real) and goes quiet this long after the last
 // marble crossed it, so the last cheer can ring out.
@@ -158,8 +162,13 @@ function playRaceSounds() {
     setTimeout(() => sound.raceOver(), 1200);
   }
   // Crowd: on once the leader nears the finish, off after the last is home.
-  const finishS = race.course.path[race.course.finishIndex].s;
-  const near = race.marbles.some((m) => m.finished || m.progress > finishS - CROWD_NEAR);
+  // (Endless mode: there is no finish until the time is nearly up.)
+  const finish = race.course.path[race.course.finishIndex];
+  if (finish && !heard.crowd) {
+    heard.crowd = true;
+    sound.setCrowd(finish.pos);
+  }
+  const near = !!finish && race.marbles.some((m) => m.finished || m.progress > finish.s - CROWD_NEAR);
   sound.setCrowdActive(phase === 'running' && near && !(heard.over && performance.now() - heard.overAt > CROWD_LINGER));
   // Safety net: nudges puff, rescues and zone resets bloop.
   while (heard.log < race.log.length) {
@@ -184,7 +193,11 @@ function playRaceSounds() {
 // countdown: false only for the very first race, which waits for Start.
 function restart(seed, countdown = true) {
   if (race) race.dispose();
-  race = new Race(RAPIER, seed, view.materials, course, setup.entries());
+  // Endless mode: no course to build, it makes itself as it is raced.
+  const endless = setup.mode === 'endless';
+  race = new Race(RAPIER, seed, view.materials, endless ? setup.endlessLayout() : course, setup.entries());
+  // The track editor works on the track mode's course only.
+  document.getElementById('edit-track').disabled = endless;
   view.setRace(race);
   lineup.setRace(race);
   stepper.accumulator = 0;
@@ -192,9 +205,8 @@ function restart(seed, countdown = true) {
   povIndex = null;
   window.race = race; // handy for inspection from the console
   race.impacts = [];
-  Object.assign(heard, { lit: 0, go: false, results: 0, log: 0, over: false, overAt: 0 });
+  Object.assign(heard, { lit: 0, go: false, results: 0, log: 0, over: false, overAt: 0, crowd: false });
   sound.setCrowdActive(false);
-  sound.setCrowd(race.course.path[race.course.finishIndex].pos);
   if (view.wireframe) ui.showMeshStats(view.meshStats);
   setPaused(false);
   if (countdown) startCountdown();
@@ -221,10 +233,16 @@ const handlers = {
   camera: (mode) => (sound.click(), rig.setMode(mode)),
   theme: (theme) => (sound.click(theme === 'white' ? 0.9 : 1.2), view.setTheme(theme)),
   editing: () => editor.active,
-  edit: () => setEditing(!editor.active),
+  edit: () => toggleEditing(),
 };
 const ui = new UI(handlers);
 ui.bindSound(sound);
+ui.bindGraphics(graphics, (g) => {
+  view.setGraphics(g);
+  lineup.setResolution(Number(g.resolution));
+  ui.showFps(g.fps);
+}, graphics.antialias);
+ui.showFps(graphics.fps);
 window.sound = sound; // console access, like window.race
 rig.onRequestFree = () => ui.enterFree(handlers);
 
@@ -303,9 +321,14 @@ function setEditing(on, test = false) {
   }
   editorPanel.show();
 }
+// Endless mode has no fixed course to edit.
+function toggleEditing() {
+  if (!editor.active && setup.mode === 'endless') return;
+  setEditing(!editor.active);
+}
 document.getElementById('edit-track').addEventListener('click', (e) => {
   e.currentTarget.blur();
-  setEditing(!editor.active);
+  toggleEditing();
 });
 // Race setup: back to the start line, where the setup shows.
 document.getElementById('open-setup').addEventListener('click', (e) => {
@@ -322,6 +345,10 @@ window.addEventListener('keydown', (e) => {
   if (t && (t.tagName === 'INPUT' || t.tagName === 'SELECT' || t.tagName === 'TEXTAREA')) return;
   if ((e.key === 'p' || e.key === 'P') && !e.ctrlKey && !e.metaKey && !editor.active) openPainter(null);
 });
+
+// ?mode=endless&minutes=5: an endless race of that length.
+if (params.get('minutes')) setup.setMinutes(params.get('minutes'), false);
+if (params.get('mode')) setup.setMode(params.get('mode'), false);
 
 ui.seed.value = params.get('seed') || '1';
 try {
@@ -358,9 +385,17 @@ const POV_OFF_ROUTE = 0.45; // further than this from the centre line: on a side
 const pov = { pos: new THREE.Vector3(), dir: new THREE.Vector3(), up: new THREE.Vector3(), radius: MARBLE.radius };
 let last = performance.now();
 
+// Frame rate, averaged over half a second, for the graphics settings.
+const fps = { frames: 0, since: performance.now() };
+
 function frame(now) {
   const frameDt = (now - last) / 1000;
   last = now;
+  if (graphics.fps && ++fps.frames && now - fps.since >= 500) {
+    ui.showFps(true, (fps.frames * 1000) / (now - fps.since));
+    fps.frames = 0;
+    fps.since = now;
+  }
   if (painter.isOpen) {
     // The paint editor covers the screen: leave the race as it is.
     requestAnimationFrame(frame);
@@ -384,6 +419,20 @@ function frame(now) {
   let alpha = 1;
   if (phase === 'running') {
     alpha = paused ? stepper.accumulator / PHYSICS.timestep : stepper.advance(frameDt, speed, () => race.step());
+  }
+  if (race.endless) {
+    // Endless mode: the opening pieces drop in on the start screen; then
+    // whatever the course did during the steps above: drops, fades, and
+    // shifts back towards the origin (the camera moves along unseen).
+    if (!paused) race.endless.tick(Math.min(frameDt, 0.1));
+    for (const e of race.endless.events) {
+      if (e.type === 'rebase') {
+        rig.shift(e.offset);
+        heard.crowd = false; // place the crowd again
+      }
+    }
+    view.endlessEvents(race, (pos) => sound.land(pos));
+    view.updateFloor(race, Math.min(frameDt, 0.1));
   }
   editor.update(now);
   view.updateMarbles(race.marbles, alpha);

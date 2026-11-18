@@ -91,6 +91,13 @@ export class CameraRig {
     this.povInit = false;
   }
 
+  // Endless mode: the world moved by offset (floating origin). The camera
+  // moves with it, so the view does not change at all.
+  shift(offset) {
+    this.camera.position.add(offset);
+    this.focus.add(offset);
+  }
+
   // Eye just above the marble, looking along the course (pov.dir), with the
   // track's up as up so the view turns over with the marble through the loop.
   _updatePov(dt, pov) {

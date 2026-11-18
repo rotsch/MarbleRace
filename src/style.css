@@ -27,12 +27,12 @@ button { flex: 1; font: inherit; padding: 4px 6px; border: 1px solid #111; backg
 button:hover { background: #111; color: #fff; }
 #hint { margin: 0; color: #666; font-size: 11px; }
 #controls { max-height: calc(100vh - 28px); overflow-y: auto; box-sizing: border-box; }
-#physics { border-top: 1px solid #ccc; padding-top: 6px; }
-#physics summary { cursor: pointer; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 600; }
+#physics, #graphics { border-top: 1px solid #ccc; padding-top: 6px; }
+#physics summary, #graphics summary { cursor: pointer; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 600; }
 #tunables { display: flex; flex-direction: column; gap: 6px; margin: 8px 0; }
 #tunables label span { float: right; color: #444; font-variant-numeric: tabular-nums; }
 #tunables label.changed { font-weight: 600; }
-#physics .note { margin: 6px 0 0; color: #666; font-size: 11px; }
+#physics .note, #graphics .note { margin: 6px 0 0; color: #666; font-size: 11px; }
 /* Progress line: each marble at its distance along the course. */
 /* Centred in the room between the ranking (left of it the lineup) and the controls. */
 #progress {
@@ -45,8 +45,14 @@ button:hover { background: #111; color: #fff; }
 #leader .dot { width: 11px; height: 11px; border-radius: 50%; border: 1px solid #111; display: inline-block; }
 #leader .name { font-weight: 600; }
 #progress-line { position: relative; height: 16px; margin: 0 8px; }
-#progress-line::before { content: ''; position: absolute; left: 0; right: 0; top: 7px; height: 2px; background: #111; }
+#progress-line::before { content: ''; position: absolute; left: var(--a, 0%); right: calc(100% - var(--b, 100%)); top: 7px; height: 2px; background: #111; }
 #progress-line::after { content: ''; position: absolute; right: -1px; top: 1px; width: 2px; height: 14px; background: #111; }
+/* Endless mode: dotted ends where track has gone / is still to come. */
+#progress-line .dots { display: none; position: absolute; top: 7px; height: 0; border-top: 2px dotted #111; }
+#progress-line .dots.head { left: 0; width: var(--a, 0%); }
+#progress-line .dots.tail { left: var(--b, 100%); right: 0; }
+#progress-line.more-before .dots.head, #progress-line.more-after .dots.tail { display: block; }
+#progress-line.more-after::after { display: none; }
 #progress-markers .marble {
   position: absolute; top: 1px; width: 14px; height: 14px; margin-left: -7px; border-radius: 50%;
   border: 1px solid #111; box-sizing: border-box; will-change: left;
@@ -75,6 +81,16 @@ button:hover { background: #111; color: #fff; }
 .setup-head .count button { flex: none; width: 28px; padding: 2px 0; font-size: 15px; line-height: 1; }
 .setup-head .count button:disabled { opacity: 0.35; cursor: default; background: #fff; color: #111; }
 #setup-count { width: 46px; font: inherit; font-weight: 600; text-align: center; padding: 3px 2px; border: 1px solid #111; }
+#edit-track:disabled { opacity: 0.4; cursor: default; pointer-events: none; }
+.setup-mode { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.setup-mode > span:first-child { font-weight: 600; }
+.setup-mode .seg { display: flex; flex: none; }
+.setup-mode .seg button { flex: none; padding: 2px 12px; }
+.setup-mode .seg button + button { border-left: none; }
+.setup-mode .seg button.on { background: #111; color: #fff; }
+.setup-mode .time-box { display: flex; align-items: center; gap: 4px; }
+.setup-mode .time-box[hidden] { display: none; }
+#setup-minutes { width: 52px; font: inherit; font-weight: 600; text-align: center; padding: 2px; border: 1px solid #111; }
 #setup-entries { display: grid; grid-template-columns: 1fr; gap: 4px 14px; overflow-y: auto; min-height: 0; max-height: 32vh; padding-right: 2px; }
 #setup-entries.wide { grid-template-columns: 1fr 1fr; }
 #setup .entry { display: flex; align-items: center; gap: 6px; min-width: 0; }
@@ -113,6 +129,11 @@ button:hover { background: #111; color: #fff; }
 #paused span { margin-left: 8px; font-size: 11px; font-weight: 400; color: #666; letter-spacing: 0; }
 #paused[hidden], #mesh-stats[hidden], #crosshair[hidden] { display: none; }
 /* Sound: speaker button (mute) and volume slider, bottom left. */
+#graphics-options { display: flex; flex-direction: column; gap: 6px; margin: 8px 0; }
+#graphics-options select { font: inherit; border: 1px solid #111; background: #fff; min-width: 0; }
+#graphics-options .preset { font-weight: 600; }
+/* Left of the controls panel (170px wide), with a gap. */
+#fps { top: 14px; right: calc(14px + 170px + 8px); padding: 4px 8px; font-variant-numeric: tabular-nums; font-size: 12px; pointer-events: none; }
 #sound { top: auto; bottom: 14px; left: 14px; display: flex; align-items: center; gap: 8px; padding: 6px 10px 6px 6px; }
 #sound-toggle { flex: none; display: flex; padding: 4px; border: none; background: none; color: #111; }
 #sound-toggle:hover { background: #eee; color: #111; }
@@ -234,6 +255,7 @@ body[data-theme='itsense'] .panel {
 }
 body[data-theme='itsense'] h2,
 body[data-theme='itsense'] #physics summary,
+body[data-theme='itsense'] #graphics summary,
 body[data-theme='itsense'] #leader .label,
 body[data-theme='itsense'] #debug-options legend { color: var(--its-red); font-weight: 700; }
 body[data-theme='itsense'] li .pos,
@@ -246,6 +268,7 @@ body[data-theme='itsense'] #leader .name { font-weight: 700; }
 body[data-theme='itsense'] button,
 body[data-theme='itsense'] #start-race { border-color: var(--its-red); color: var(--its-slate); background: #fff; }
 body[data-theme='itsense'] button:hover,
+body[data-theme='itsense'] .setup-mode .seg button.on,
 body[data-theme='itsense'] #start-race:hover { background: var(--its-red); border-color: var(--its-red); color: #fff; }
 body[data-theme='itsense'] #start-race::after { content: ' \2197'; color: var(--its-red); }
 body[data-theme='itsense'] #start-race:hover::after { color: #fff; }
@@ -257,6 +280,7 @@ body[data-theme='itsense'] input[type='range'],
 body[data-theme='itsense'] input[type='checkbox'] { accent-color: var(--its-red); }
 body[data-theme='itsense'] #progress-line::before,
 body[data-theme='itsense'] #progress-line::after { background: var(--its-slate); }
+body[data-theme='itsense'] #progress-line .dots { border-top-color: var(--its-slate); }
 body[data-theme='itsense'] #lineup .card.lead .slot { border-color: var(--its-red); }
 /* Neon dusk theme: the panels glow like the scene. Deep indigo glass,
    cyan neon edges, hot-pink headings, light ice-blue text. */
@@ -271,6 +295,7 @@ body[data-theme='neon'] .panel {
 }
 body[data-theme='neon'] h2,
 body[data-theme='neon'] #physics summary,
+body[data-theme='neon'] #graphics summary,
 body[data-theme='neon'] #leader .label,
 body[data-theme='neon'] #debug-options legend,
 body[data-theme='neon'] .sub { color: var(--neon-pink); text-shadow: 0 0 6px rgba(255, 42, 109, 0.85); }
@@ -288,6 +313,7 @@ body[data-theme='neon'] #lineup .card.done .place { color: var(--neon-ice); }
 body[data-theme='neon'] #lineup .card.first .place { color: var(--neon-sun); text-shadow: 0 0 6px rgba(255, 211, 25, 0.8); }
 body[data-theme='neon'] #clock,
 body[data-theme='neon'] #physics,
+body[data-theme='neon'] #graphics,
 body[data-theme='neon'] #debug-options { border-color: rgba(5, 217, 232, 0.4); }
 body[data-theme='neon'] li .dot,
 body[data-theme='neon'] #leader .dot,
@@ -299,6 +325,7 @@ body[data-theme='neon'] #start-race {
 }
 body[data-theme='neon'] button:hover,
 body[data-theme='neon'] #start-race:hover,
+body[data-theme='neon'] .setup-mode .seg button.on,
 body[data-theme='neon'] #editor button.tool.on {
   background: var(--neon-pink); border-color: var(--neon-pink); color: #fff;
   box-shadow: 0 0 12px rgba(255, 42, 109, 0.9); text-shadow: none;
@@ -310,6 +337,7 @@ body[data-theme='neon'] #sound-toggle:hover { background: none; color: var(--neo
 body[data-theme='neon'] select,
 body[data-theme='neon'] input[type='text'],
 body[data-theme='neon'] #setup-count,
+body[data-theme='neon'] #setup-minutes,
 body[data-theme='neon'] #ed-fields input,
 body[data-theme='neon'] #ed-stops input {
   border: 1px solid rgba(5, 217, 232, 0.6); background: rgba(10, 4, 24, 0.85); color: var(--neon-ice);
@@ -319,6 +347,7 @@ body[data-theme='neon'] input[type='range'],
 body[data-theme='neon'] input[type='checkbox'] { accent-color: var(--neon-pink); }
 body[data-theme='neon'] #progress-line::before,
 body[data-theme='neon'] #progress-line::after { background: var(--neon-cyan); box-shadow: 0 0 6px var(--neon-cyan); }
+body[data-theme='neon'] #progress-line .dots { border-top-color: var(--neon-cyan); filter: drop-shadow(0 0 3px var(--neon-cyan)); }
 body[data-theme='neon'] #lineup .card.lead .slot { border-color: var(--neon-pink); box-shadow: 0 0 10px rgba(255, 42, 109, 0.9); }
 body[data-theme='neon'] #countdown,
 body[data-theme='neon'] #paused { color: var(--neon-ice); text-shadow: 0 0 10px var(--neon-pink), 0 0 22px var(--neon-pink); }
@@ -328,9 +357,11 @@ body[data-theme='itsense'] #countdown { color: var(--its-red); }
 body[data-theme='itsense'] #paused { border: none; border-top: 3px solid var(--its-red); color: var(--its-slate); }
 body[data-theme='neon'] #setup .entry select,
 body[data-theme='neon'] #editor select,
+body[data-theme='neon'] #graphics-options select,
 body[data-theme='neon'] .pt-panel select {
   border: 1px solid rgba(5, 217, 232, 0.6); background: rgba(10, 4, 24, 0.85); color: var(--neon-ice);
 }
 body[data-theme='itsense'] #setup .entry select,
 body[data-theme='itsense'] #editor select,
+body[data-theme='itsense'] #graphics-options select,
 body[data-theme='itsense'] .pt-panel select { border: 1px solid #c4c4c4; color: var(--its-slate); }

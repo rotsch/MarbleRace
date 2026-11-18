@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import logoUrl from './itsense-logo.svg';
+import { WORLD_ORIGIN, ORIGIN_UNIFORM } from '../worldOrigin.js';
 
 // "ITSENSE": a theme in the style of itsense.ch. Their palette and shapes:
 //   page grey #ECEEF0, brand red #D10007, dark slate #17262F, text grey
@@ -82,18 +83,22 @@ export class ItsenseTheme {
     // Warm, golden light: a cosy late afternoon.
     view.hemi.color.set(0xfff1e0);
     view.hemi.groundColor.set(0xd9cfc6);
-    view.hemi.intensity = 2.0;
+    view.hemi.intensity = 1.2;
     view.sun.color.set(0xffd6a0);
-    view.sun.intensity = 2.3;
+    view.sun.intensity = 3.0;
     view.materials.outline.color.set(SLATE);
   }
 
-  update(dt, camera) {
+  // Endless mode: the world moved by offset (nothing here is fixed in it).
+  shift() {}
+
+  update(dt, camera, floorY = 0) {
     if (!this.enabled) return;
     this.time.value += dt;
     this.sky.position.copy(camera.position);
-    this.ground.position.set(camera.position.x, 0, camera.position.z);
-    this.mountains.position.set(camera.position.x, 0, camera.position.z);
+    // floorY: where the ground lies (endless mode lowers it with the track).
+    this.ground.position.set(camera.position.x, floorY, camera.position.z);
+    this.mountains.position.set(camera.position.x, floorY, camera.position.z);
   }
 }
 
@@ -193,7 +198,7 @@ function skyLogo() {
 function groundMaterial() {
   return new THREE.ShaderMaterial({
     fog: false,
-    uniforms: { uSun: { value: SUN } },
+    uniforms: { uSun: { value: SUN }, uWorldOrigin: WORLD_ORIGIN },
     vertexShader: /* glsl */ `
       varying vec3 vW;
       void main() {
@@ -203,11 +208,12 @@ function groundMaterial() {
       }`,
     fragmentShader: /* glsl */ `
       uniform vec3 uSun;
+      uniform vec3 uWorldOrigin;
       varying vec3 vW;
       void main() {
         vec3 page = vec3(0.937, 0.933, 0.925);
         vec3 band = vec3(0.9, 0.895, 0.89);
-        float v = vW.z + abs(vW.x) * 0.45;
+        float v = (vW.z - uWorldOrigin.z) + abs(vW.x - uWorldOrigin.x) * 0.45;
         float q = fract(v / 18.0);
         float w = fwidth(v / 18.0);
         float s = smoothstep(0.62 - w, 0.62 + w, q) - smoothstep(1.0 - w, 1.0, q);
@@ -362,16 +368,17 @@ function summitFlag(apex, h) {
 function trackMaterial() {
   const m = new THREE.MeshStandardMaterial({ roughness: 0.75, metalness: 0 });
   m.onBeforeCompile = (shader) => {
+    shader.uniforms.uWorldOrigin = WORLD_ORIGIN;
     shader.vertexShader = shader.vertexShader
       .replace(
         '#include <common>',
-        '#include <common>\nattribute float accent;\nvarying float vItsAccent;\nvarying vec3 vItsPos;\nvarying vec3 vItsNormal;'
+        `#include <common>\nattribute float accent;\nvarying float vItsAccent;\nvarying vec3 vItsPos;\nvarying vec3 vItsNormal;\n${ORIGIN_UNIFORM}`
       )
       .replace(
         '#include <begin_vertex>',
         '#include <begin_vertex>\n' +
           'vItsAccent = accent;\n' +
-          'vItsPos = (modelMatrix * vec4(transformed, 1.0)).xyz;\n' +
+          'vItsPos = (modelMatrix * vec4(transformed, 1.0)).xyz - uWorldOrigin;\n' +
           'vItsNormal = normalize(mat3(modelMatrix) * objectNormal);'
       );
     shader.fragmentShader = shader.fragmentShader

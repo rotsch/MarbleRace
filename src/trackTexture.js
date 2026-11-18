@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { WORLD_ORIGIN, ORIGIN_UNIFORM } from './worldOrigin.js';
 
 // Covers every course surface with a random mosaic of the pictures in the
 // project's `textures/` folder. Vite lists the folder at build time, so adding
@@ -34,13 +35,13 @@ export function applyTrackTexture(material) {
     trackTile: { value: TILE },
   };
   material.onBeforeCompile = (shader) => {
-    Object.assign(shader.uniforms, uniforms);
+    Object.assign(shader.uniforms, uniforms, { uWorldOrigin: WORLD_ORIGIN });
     shader.vertexShader = shader.vertexShader
-      .replace('#include <common>', '#include <common>\nvarying vec3 vTexPos;\nvarying vec3 vTexNormal;')
+      .replace('#include <common>', `#include <common>\nvarying vec3 vTexPos;\nvarying vec3 vTexNormal;\n${ORIGIN_UNIFORM}`)
       .replace(
         '#include <begin_vertex>',
         '#include <begin_vertex>\n' +
-          'vTexPos = (modelMatrix * vec4(transformed, 1.0)).xyz;\n' +
+          'vTexPos = (modelMatrix * vec4(transformed, 1.0)).xyz - uWorldOrigin;\n' +
           'vTexNormal = normalize(mat3(modelMatrix) * objectNormal);'
       );
     shader.fragmentShader = shader.fragmentShader

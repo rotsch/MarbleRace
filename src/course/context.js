@@ -33,6 +33,17 @@ export class CourseContext {
     this.piece = null; // piece being built
     this.pathFrom = null; // path index the next point carries on from (see addPathPoint)
     this.lift = 0; // how far finalize() raised the course
+    // Streaming (endless mode, see endless.js): every piece gets a fixed
+    // body of its own, so it can be removed again and the whole course can
+    // be shifted back towards the origin. Set before building anything.
+    this.streaming = false;
+    this.courseBodies = new Set([this.body.handle]);
+    this.liveFrom = 0; // first path index on a piece that still exists
+  }
+
+  // Whether a rigid body (by handle) belongs to the course.
+  isCourse(handle) {
+    return this.courseBodies.has(handle);
   }
 
   // Start building a piece: its meshes go into a group of their own and its
@@ -44,7 +55,13 @@ export class CourseContext {
       // Shape stops (see trackBuilder.js), sorted, and how far the main
       // route has got; samples: wall positions along it, for the editor.
       shape: (piece.shape ?? []).slice().sort((a, b) => a.d - b.d), mainD: 0, samples: [],
+      bounds: { min: new Vector3(Infinity, Infinity, Infinity), max: new Vector3(-Infinity, -Infinity, -Infinity) },
+      body: null, sensors: [], zones0: this.zones.length, sections0: this.sections.length,
     };
+    if (this.streaming) {
+      p.body = this.world.createRigidBody(this.RAPIER.RigidBodyDesc.fixed());
+      this.courseBodies.add(p.body.handle);
+    }
     if (this.group) {
       p.group = new Group();
       p.group.userData.pieceId = piece.id;
@@ -172,12 +189,21 @@ export class CourseContext {
   _grow(x, y, z) {
     this.bounds.min.min({ x, y, z });
     this.bounds.max.max({ x, y, z });
+    if (this.piece) {
+      this.piece.bounds.min.min({ x, y, z });
+      this.piece.bounds.max.max({ x, y, z });
+    }
+  }
+
+  // Body the current piece's colliders go on.
+  get _body() {
+    return this.piece?.body ?? this.body;
   }
 
   _physics(desc, m = {}) {
     desc.setFriction(m.friction ?? TRACK.friction).setRestitution(m.restitution ?? TRACK.restitution);
     if (m.bounceMax) desc.setRestitutionCombineRule(this.RAPIER.CoefficientCombineRule.Max);
-    return this.world.createCollider(desc, this.body);
+    return this.world.createCollider(desc, this._body);
   }
 
   _visual(geometry, position, quaternion, edgeAngle = 25, look = null) {
@@ -190,6 +216,10 @@ export class CourseContext {
     const mesh = new Mesh(geometry, look ?? this.materials.surface);
     // Its own look (glass): kept through theme switches, like decoration.
     if (look) mesh.userData.decor = true;
+    // Track surfaces shade themselves and each other from the sun. Glass
+    // lets the light through. Decoration and the theme's ground and walls
+    // stay out of it.
+    mesh.castShadow = mesh.receiveShadow = !look;
     const lines = new LineSegments(new EdgesGeometry(geometry, edgeAngle), this.materials.outline);
     mesh.add(lines);
     if (position) mesh.position.copy(position);
@@ -265,6 +295,11 @@ export class CourseContext {
     if (position) mesh.position.copy(position);
     if (quaternion) mesh.quaternion.copy(quaternion);
     mesh.userData.decor = true;
+    // Decoration casts shadows onto the track and onto itself, and receives
+    // them (see CourseContext._visual).
+    mesh.castShadow = mesh.receiveShadow = true;
+    // Layer 1: the graphics settings can hide all decoration (see View).
+    mesh.traverse((o) => o.layers.set(1));
     this.target.add(mesh);
     return mesh;
   }
@@ -286,7 +321,9 @@ export class CourseContext {
       .setRotation(quat)
       .setSensor(true)
       .setActiveEvents(R.ActiveEvents.COLLISION_EVENTS);
-    this.sensors.set(this.world.createCollider(desc, this.body).handle, name);
+    const handle = this.world.createCollider(desc, this._body).handle;
+    this.sensors.set(handle, name);
+    this.piece?.sensors.push(handle);
   }
 
   addSensorAt(name, frame, local, hx, hy, hz) {
@@ -324,9 +361,86 @@ export class CourseContext {
     this.path.push({ pos: pos.clone(), up: up.clone(), tangent: tangent && tangent.clone(), s: (prev ? prev.s : 0) + dist, section: this.sectionName, piece: this.piece?.id, cam: this.cameraHint, solid });
   }
 
-  // Lift the whole course so its lowest point sits `clearance` above the floor.
+  // Streaming: take a piece out of the race. Its colliders go at once; its
+  // meshes stay for the view to fade out (see removeGroup). Its centre-line
+  // points stay in the path, so indices keep their meaning, but are no
+  // longer solid: nobody is ever put back on them.
+  removePiece(id) {
+    const p = this.pieces.get(id);
+    if (!p || p.removed) return;
+    p.removed = true;
+    for (const h of p.sensors) this.sensors.delete(h);
+    if (p.body) {
+      this.courseBodies.delete(p.body.handle);
+      this.world.removeRigidBody(p.body);
+      p.body = null;
+    }
+    for (let i = p.path0; i < p.path1; i++) {
+      this.path[i].solid = false;
+      this.path[i].gone = true;
+    }
+  }
+
+  // Detach a removed piece's meshes from the course and free them.
+  removeGroup(id) {
+    const p = this.pieces.get(id);
+    if (!p?.group) return;
+    p.group.parent?.remove(p.group);
+    p.group.traverse((o) => o.geometry?.dispose());
+    p.group = null;
+  }
+
+  // Streaming: take back the piece built last as if it had never been built
+  // (the generator tries another one when it would cross live track).
+  undoLastPiece(id) {
+    const p = this.pieces.get(id);
+    if (!p) return;
+    this.removePiece(id);
+    this.removeGroup(id);
+    this.path.length = p.path0;
+    this.zones.length = p.zones0;
+    this.sections.length = p.sections0;
+    this.sectionName = this.sections.at(-1)?.name ?? 'start';
+    this.pieces.delete(id);
+  }
+
+  // Tangents for centre-line points that have none yet (points in the air),
+  // from index `from` on, and the course length so far.
+  fillTangents(from = 0) {
+    for (let i = from; i < this.path.length; i++) {
+      const p = this.path[i];
+      if (!p.tangent) {
+        const a = this.path[Math.max(0, i - 1)].pos, b = this.path[Math.min(this.path.length - 1, i + 1)].pos;
+        p.tangent = b.clone().sub(a).normalize();
+      }
+    }
+    for (let i = from; i < this.path.length; i++) this.length = Math.max(this.length ?? 0, this.path[i].s);
+  }
+
+  // Streaming: move the whole course by `offset` (floating origin). Removed
+  // pieces' path points move too, so the path stays one consistent line.
+  shift(offset) {
+    for (const p of this.pieces.values()) {
+      if (p.body) {
+        const t = p.body.translation();
+        p.body.setTranslation({ x: t.x + offset.x, y: t.y + offset.y, z: t.z + offset.z }, true);
+      }
+      if (p.group) p.group.position.add(offset);
+      for (const k of [...p.ins, ...p.outs]) k.pos.add(offset);
+      p.bounds.min.add(offset);
+      p.bounds.max.add(offset);
+    }
+    for (const p of this.path) p.pos.add(offset);
+    for (const h of this.cameraHints) if (h.pos) h.pos.add(offset);
+    if (this.spawn) this.spawn.forEach((p) => p.add(offset));
+    this.bounds.min.add(offset);
+    this.bounds.max.add(offset);
+  }
+
+  // Lift the whole course so its lowest point sits `clearance` above the floor
+  // (a streaming course has no floor and stays where it is).
   finalize(clearance) {
-    const dy = clearance - this.bounds.min.y;
+    const dy = this.streaming ? 0 : clearance - this.bounds.min.y;
     this.body.setTranslation({ x: 0, y: dy, z: 0 }, false);
     if (this.group) this.group.position.y = dy;
     for (const p of this.path) p.pos.y += dy;

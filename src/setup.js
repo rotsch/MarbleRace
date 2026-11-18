@@ -1,24 +1,30 @@
 import { COLORS, MARBLE, MAX_MARBLES } from './config.js';
 import { BUILTIN, designById, designColor, designTexture, listDesigns, loadDesign } from './designs.js';
 
-// Race setup, shown while a race waits on the start line: how many marbles
-// race, and each one's name and design. Remembered in this browser.
+// Race setup, shown while a race waits on the start line: the mode (the
+// track, or an endless course of random pieces for a set time), how many
+// marbles race, and each one's name and design. Remembered in this browser.
+//   mode, minutes    'track' | 'endless', and the endless race's length
 //   entries()        the racers for a new Race: [{ name, color, design }]
-//   onCount()        the number of marbles changed (the race must be rebuilt)
+//   onRebuild()      the number of marbles or the mode changed (the race must be rebuilt)
 //   onEntry(i)       racer i got another name or design (no rebuild needed)
 //   onPaint(i)       paint a design for racer i (null: a new design)
 const KEY = 'marble-race-setup';
 const MIN = 2;
+const MINUTES = { min: 0.5, max: 60, def: 5 };
+const clampMinutes = (m) => Math.min(MINUTES.max, Math.max(MINUTES.min, Math.round((Number(m) || MINUTES.def) * 2) / 2));
 const $ = (id) => document.getElementById(id);
 
 const defaultEntry = (i) => ({ name: COLORS[i % COLORS.length].name, design: `color:${COLORS[i % COLORS.length].name}` });
 
 export class RaceSetup {
-  constructor({ onCount, onEntry, onPaint }) {
-    this.onCount = onCount;
+  constructor({ onRebuild, onEntry, onPaint }) {
+    this.onRebuild = onRebuild;
     this.onEntry = onEntry;
     this.onPaint = onPaint;
     this.count = MARBLE.count;
+    this.mode = 'track';
+    this.minutes = MINUTES.def;
     // Always MAX_MARBLES entries, so names survive lowering and raising the count.
     this.list = Array.from({ length: MAX_MARBLES }, (_, i) => defaultEntry(i));
     this.library = []; // design names in the marbles/ folder
@@ -42,6 +48,47 @@ export class RaceSetup {
       this.render();
     });
     $('setup-shuffle').addEventListener('click', () => this.shuffleDesigns());
+    $('mode-track').addEventListener('click', (e) => (e.currentTarget.blur(), this.setMode('track')));
+    $('mode-endless').addEventListener('click', (e) => (e.currentTarget.blur(), this.setMode('endless')));
+    this.minutesInput = $('setup-minutes');
+    Object.assign(this.minutesInput, { min: String(MINUTES.min), max: String(MINUTES.max) });
+    this.minutesInput.addEventListener('keydown', (e) => e.stopPropagation());
+    this.minutesInput.addEventListener('change', () => this.setMinutes(this.minutesInput.value));
+  }
+
+  // 'track' or 'endless'. A different mode is a different course: rebuild.
+  setMode(mode, rebuild = true) {
+    if (mode !== 'track' && mode !== 'endless') return;
+    const changed = mode !== this.mode;
+    this.mode = mode;
+    this._save();
+    this._renderMode();
+    if (changed && rebuild) this.onRebuild();
+  }
+
+  // Length of an endless race. The course decides when the finish comes
+  // from it, so it needs a new race too (only in endless mode).
+  setMinutes(m, rebuild = true) {
+    const v = clampMinutes(m);
+    const changed = v !== this.minutes;
+    this.minutes = v;
+    this._save();
+    this._renderMode();
+    if (changed && rebuild && this.mode === 'endless') this.onRebuild();
+  }
+
+  // What Race gets as its course for the endless mode.
+  endlessLayout() {
+    return { endless: { duration: this.minutes * 60 } };
+  }
+
+  _renderMode() {
+    $('mode-track').classList.toggle('on', this.mode === 'track');
+    $('mode-endless').classList.toggle('on', this.mode === 'endless');
+    $('mode-track').setAttribute('aria-pressed', String(this.mode === 'track'));
+    $('mode-endless').setAttribute('aria-pressed', String(this.mode === 'endless'));
+    $('mode-time').hidden = this.mode !== 'endless';
+    this.minutesInput.value = String(this.minutes);
   }
 
   // Load the library and every design the racers use. Call before the first race.
@@ -75,6 +122,8 @@ export class RaceSetup {
       const s = JSON.parse(localStorage.getItem(KEY));
       if (!s) return;
       this.count = Math.min(MAX_MARBLES, Math.max(MIN, Number(s.count) || MARBLE.count));
+      if (s.mode === 'endless') this.mode = 'endless';
+      if (s.minutes != null) this.minutes = clampMinutes(s.minutes);
       (s.entries ?? []).slice(0, MAX_MARBLES).forEach((e, i) => {
         if (typeof e?.name === 'string') this.list[i].name = e.name.slice(0, 24);
         if (typeof e?.design === 'string') this.list[i].design = e.design;
@@ -86,7 +135,7 @@ export class RaceSetup {
 
   _save() {
     try {
-      localStorage.setItem(KEY, JSON.stringify({ count: this.count, entries: this.list }));
+      localStorage.setItem(KEY, JSON.stringify({ count: this.count, mode: this.mode, minutes: this.minutes, entries: this.list }));
     } catch {
       // ignore
     }
@@ -116,7 +165,7 @@ export class RaceSetup {
     this.count = n;
     this._save();
     this.render();
-    this.onCount();
+    this.onRebuild();
   }
 
   async setDesign(i, id) {
@@ -152,6 +201,7 @@ export class RaceSetup {
 
   // One row per racer: preview, name, design, paint button.
   render() {
+    this._renderMode();
     this.countInput.value = String(this.count);
     $('setup-minus').disabled = this.count <= MIN;
     $('setup-plus').disabled = this.count >= MAX_MARBLES;

@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { WORLD_ORIGIN, ORIGIN_UNIFORM } from '../worldOrigin.js';
 
 // "Neon dusk": the coloured theme (T). The white room becomes an evening sky
 // over an endless glowing grid: a gradient from deep indigo to a hot pink
@@ -44,7 +45,14 @@ export class NeonTheme {
   setCourse(course) {
     for (const f of this.floaters.children) f.geometry.dispose();
     this.floaters.clear();
-    const b = course.bounds;
+    // Endless mode: the course is built while it is raced and keeps going
+    // down, so the shapes are scattered around the start and then travel
+    // along with the camera, slowly, as a backdrop.
+    this.follow = course.streaming;
+    this.floaters.position.set(0, 0, 0);
+    const b = course.streaming
+      ? { min: new THREE.Vector3(-30, -30, -30), max: new THREE.Vector3(30, 0, 30) }
+      : course.bounds;
     this.center.value.set((b.min.x + b.max.x) / 2, (b.min.z + b.max.z) / 2);
     let seed = 99991;
     const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
@@ -92,19 +100,32 @@ export class NeonTheme {
     this.scene.background = on ? HORIZON : new THREE.Color(0xffffff);
     view.hemi.color.set(on ? 0xffd6f5 : 0xffffff);
     view.hemi.groundColor.set(on ? 0x3a1d6e : 0xdcdcdc);
-    view.hemi.intensity = on ? 2.0 : 2.2;
+    view.hemi.intensity = 1.3;
     view.sun.color.set(on ? 0xffc29a : 0xffffff);
     view.materials.outline.color.set(on ? 0x1a0a33 : 0x000000);
   }
 
   // Per frame: time for the shaders, the sky and grid stay around the camera,
   // shapes drift.
-  update(dt, camera) {
+  // Endless mode: the world moved by offset; the shapes move with it.
+  shift(offset) {
+    if (this.follow) this.floaters.position.add(offset);
+  }
+
+  update(dt, camera, floorY = 0) {
     if (!this.enabled) return;
     this.time.value += dt;
     const t = this.time.value;
     this.sky.position.copy(camera.position);
-    this.ground.position.set(camera.position.x, 0, camera.position.z);
+    // floorY: where the ground lies (endless mode lowers it with the track).
+    this.ground.position.set(camera.position.x, floorY, camera.position.z);
+    if (this.follow) {
+      const f = this.floaters.position, k = 1 - Math.exp(-dt * 0.25);
+      f.x += (camera.position.x - f.x) * k;
+      f.y += (camera.position.y - f.y) * k;
+      f.z += (camera.position.z - f.z) * k;
+      this.center.value.set(f.x, f.z);
+    }
     for (const f of this.floaters.children) {
       const u = f.userData;
       f.rotation.x += u.spin.x * dt;
@@ -175,7 +196,7 @@ export class NeonTheme {
   _groundMaterial() {
     return new THREE.ShaderMaterial({
       fog: false,
-      uniforms: { uTime: this.time, uCenter: this.center, uFog: { value: new THREE.Vector3(1.0, 0.435, 0.38) } },
+      uniforms: { uTime: this.time, uCenter: this.center, uFog: { value: new THREE.Vector3(1.0, 0.435, 0.38) }, uWorldOrigin: WORLD_ORIGIN },
       vertexShader: /* glsl */ `
         varying vec3 vW;
         void main() {
@@ -187,6 +208,7 @@ export class NeonTheme {
         uniform float uTime;
         uniform vec2 uCenter;
         uniform vec3 uFog;
+        uniform vec3 uWorldOrigin;
         varying vec3 vW;
         float grid(vec2 p, float cell, float width) {
           vec2 q = p / cell;
@@ -194,7 +216,7 @@ export class NeonTheme {
           return 1.0 - min(min(g.x, g.y) / width, 1.0);
         }
         void main() {
-          vec2 p = vW.xz;
+          vec2 p = vW.xz - uWorldOrigin.xz;
           float minor = grid(p, 2.0, 1.0);
           float major = grid(p, 10.0, 1.6);
           // Rings of light pulse outwards from under the course.
@@ -218,12 +240,13 @@ function trackMaterial(time) {
   const m = new THREE.MeshStandardMaterial({ roughness: 0.5, metalness: 0.05 });
   m.onBeforeCompile = (shader) => {
     shader.uniforms.uTime = time;
+    shader.uniforms.uWorldOrigin = WORLD_ORIGIN;
     shader.vertexShader = shader.vertexShader
-      .replace('#include <common>', '#include <common>\nvarying vec3 vNeonPos;\nvarying vec3 vNeonNormal;')
+      .replace('#include <common>', `#include <common>\nvarying vec3 vNeonPos;\nvarying vec3 vNeonNormal;\n${ORIGIN_UNIFORM}`)
       .replace(
         '#include <begin_vertex>',
         '#include <begin_vertex>\n' +
-          'vNeonPos = (modelMatrix * vec4(transformed, 1.0)).xyz;\n' +
+          'vNeonPos = (modelMatrix * vec4(transformed, 1.0)).xyz - uWorldOrigin;\n' +
           'vNeonNormal = normalize(mat3(modelMatrix) * objectNormal);'
       );
     shader.fragmentShader = shader.fragmentShader

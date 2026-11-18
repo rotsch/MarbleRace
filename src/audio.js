@@ -306,6 +306,17 @@ export class Sound {
     if (out) this._noise(t, 0.18, out, 0.4, { freq: 400, to: 1500, q: 1 });
   }
 
+  // Endless mode: a dropped-in piece touching down on the track: a low thud
+  // and a short dusty hiss.
+  land(pos) {
+    if (!this.on) return;
+    const t = this.ctx.currentTime;
+    const out = this._out(pos, 0.5);
+    if (!out) return;
+    this._osc('sine', 150, t, 0.16, out, 0.45, { to: 55 });
+    this._noise(t, 0.3, out, 0.22, { freq: 900, to: 300, q: 0.7 });
+  }
+
   // Marble fired from the camera.
   shot() {
     if (!this.on) return;
