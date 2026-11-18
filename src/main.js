@@ -61,6 +61,7 @@ const painter = new Painter({
   },
   onClose: () => lineup.layout(),
 });
+window.painter = painter; // console access, like window.race
 function openPainter(i = null) {
   if (editor?.active) return;
   if (phase !== 'ready') setPaused(true);

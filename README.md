@@ -71,7 +71,7 @@ beside the marble) turns it; the wheel zooms.
 | Eraser `E` | removes paint, the base shows again |
 | Fill `F` | fills an area of about one colour (a stripe of the pattern, a painted shape) |
 | Ring `R` | a band right round the marble: drag across it (the band runs through both points), or click for one across the view; Size sets its width |
-| Sticker `T` | stamps a star, heart, circle, ring, lightning bolt, flower, crown, eye, text, or a picture of your own (Picture… loads any image), with size and rotation; a preview shows where it goes |
+| Sticker `T` | stamps a star, heart, circle, ring, lightning bolt, flower, crown, triangle, moon, eye, text, or a picture of your own (Picture… loads any image), with size and rotation; a preview shows where it goes |
 | Pick colour `I` | takes the colour under the cursor |
 | Turn `H` | turns the marble |
 
@@ -111,8 +111,13 @@ A design file is JSON:
 way three.js maps a sphere (longitude across, latitude down, the top row at
 the north pole). See `src/designs.js`.
 
-The samples in `marbles/` (Bumblebee, Lucky Seven, Beach Ball, Flower Power)
-were painted with the editor.
+The 19 sample designs in `marbles/` were all painted with the editor's tools:
+Basketball, Beach Ball, Bumblebee, Camo, Earth, Eight Ball, Eyeball, Flower
+Power, Football, Galaxy, Gold Medal, Ladybug, Lava, Lucky Seven, Moon,
+Pumpkin, Rainbow, Tennis Ball, Zebra. The editor is also reachable from the
+browser console as `window.painter` (like `window.race`), so designs can be
+painted by script: its `_dab`, `_ring`, `_fill`, `_stamp` and `_spray`
+methods take a unit direction on the marble.
 
 ## Track editor
 

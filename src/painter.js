@@ -42,6 +42,8 @@ const SHAPES = [
   { id: 'bolt', label: 'Lightning' },
   { id: 'flower', label: 'Flower' },
   { id: 'crown', label: 'Crown' },
+  { id: 'triangle', label: 'Triangle' },
+  { id: 'moon', label: 'Moon' },
   { id: 'eye', label: 'Eye' },
   { id: 'text', label: 'Text' },
   { id: 'image', label: 'Picture…' },
@@ -1063,6 +1065,18 @@ export class Painter {
         g.beginPath();
         g.arc(0, 0, 0.3, 0, Math.PI * 2);
         g.fill();
+        break;
+      case 'triangle':
+        g.beginPath();
+        [[0, -0.95], [0.95, 0.75], [-0.95, 0.75]].forEach(([x, y]) => g.lineTo(x, y));
+        g.fill();
+        break;
+      case 'moon':
+        g.beginPath();
+        g.arc(0, 0, 0.95, 0, Math.PI * 2);
+        g.moveTo(0.38 + 0.75, -0.22);
+        g.arc(0.38, -0.22, 0.75, 0, Math.PI * 2, true);
+        g.fill('evenodd');
         break;
       case 'crown':
         g.beginPath();
