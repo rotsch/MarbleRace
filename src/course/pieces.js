@@ -250,7 +250,7 @@ const SINGLE = {
   corkscrew: ['corkscrew'],
   tunnelDrop: ['tunnelDrop'],
 };
-export const LAYOUTS = ['full', ...Object.keys(SINGLE)];
+export const LAYOUTS = ['full', 'classic', ...Object.keys(SINGLE)];
 
 export function defaultCourse(layout = 'full') {
   const pose = { pos: [0, 0, 0], yaw: 0, pitch: deg(-8) };
@@ -269,6 +269,60 @@ export function defaultCourse(layout = 'full') {
     [name, 'curve', { radius: 0.55, angle: deg(75 * dir), pitch: deg(pitch), bank: 0, rail: 0.65 }],
     [name, 'curve', { radius: 0.55, angle: deg(-75 * dir), pitch: deg(pitch), bank: 0, rail: 0.65 }],
   ];
+  if (layout === 'classic') return classicCourse(pose, sBend);
+  // Every piece type once (fork and merge as a pair), the fast ones followed
+  // by brake bends. Bends alternate left and right so the course stays in a
+  // band instead of curling back over itself.
+  const data = chain([
+    ['Start', 'start', { len: 2.6 }],
+    ['Peg field', 'pegField'],
+    ['Curve 1', 'curve', { radius: 1.6, angle: deg(-70), pitch: deg(-4) }],
+    ['Stairs', 'stairs'],
+    ['Funnel', 'funnel', { side: 1, exitTurn: deg(50) }],
+    ['Pinball bumpers', 'bumpers'],
+    ['Loop', 'loop'],
+    ...sBend('S-bend 1', 1),
+    ['Half-pipe', 'halfPipe', { side: 1 }],
+    ['Splitter', 'splitter', { side: -1 }],
+    ['Gutter rails', 'railRun'],
+    ['Winding 1', 'winding', { bends: [[1.7, 80], [1.4, -130], [1.5, 120], [1.6, -90], [1.8, 60]] }],
+    ['Valley', 'valley'],
+    ['Curve 2', 'curve', { radius: 1.6, angle: deg(60), pitch: deg(-4) }],
+    ['Wave track', 'waves'],
+    ['Drop and catch', 'dropCatch'],
+    ...sBend('S-bend 2', -1),
+    ['Chicane', 'chicane', { side: 1 }],
+    ['Bumpy road', 'bumpyRoad'],
+    ...sBend('S-bend 3', 1),
+    ['Spiral', 'spiral', { side: 1 }],
+    ['Wall ride', 'wallRide', { angle: deg(-150) }],
+    ['Bouncy pads', 'bouncyPads'],
+    ...sBend('S-bend 4', 1),
+    ['Three-way splitter', 'splitter3'],
+    ['Ski jump', 'skiJump'],
+    ['Curve 3', 'curve', { radius: 1.5, angle: deg(70), pitch: deg(-4) }],
+    ['Corkscrew', 'corkscrew', { side: -1 }],
+    ['Fork', 'fork'],
+    ['Left route', 'straight', { len: 1.6, pitch: deg(-5) }],
+    ['Merge', 'merge'],
+    ['Big jump', 'bigJump', { side: -1 }],
+    ...sBend('S-bend 5', -1),
+    ['Tunnel drop', 'tunnelDrop', { exitTurn: deg(-60) }],
+    ['Winding 2', 'winding', { bends: [[1.5, -100], [1.6, 120], [1.4, -110], [1.7, 90]] }],
+    ['Curve 4', 'curve', { radius: 1.4, angle: deg(-50), pitch: deg(-4), rail: 0.6 }],
+    ['Bottleneck', 'bottleneck'],
+    ['Finish', 'finish'],
+  ], pose);
+  // The fork's second output: a matching straight into the merge's second input.
+  const id = (name) => data.pieces.find((p) => p.name === name).id;
+  const right = { id: `p${data.pieces.length + 1}`, type: 'straight', name: 'Right route', opts: { len: 1.6, pitch: deg(-5) } };
+  data.pieces.splice(data.pieces.findIndex((p) => p.name === 'Left route') + 1, 0, right);
+  data.links.push({ from: [id('Fork'), 1], to: [right.id, 0] }, { from: [right.id, 0], to: [id('Merge'), 1] });
+  return data;
+}
+
+// The course before the newer pieces: ?layout=classic.
+function classicCourse(pose, sBend) {
   return chain([
     ['Start', 'start', { len: 2.6 }],
     ['Peg field', 'pegField'],

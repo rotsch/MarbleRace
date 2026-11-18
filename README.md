@@ -48,7 +48,7 @@ Node 18 or newer.
 URL parameters: `?seed=42` picks the starting seed; `?layout=loop` loads one
 section on its own (`pegField`, `funnel`, `loop`, `halfPipe`, `splitter`,
 `dropCatch`, `bumpyRoad`, `spiral`, `bouncyPads`, `bottleneck`, `winding`,
-`valley`, `bigJump`, and the newer pieces `stairs`, `bumpers`, `waves`,
+`valley`, `bigJump`, `classic` (the course before the newer pieces), and the newer pieces `stairs`, `bumpers`, `waves`,
 `splitter3`, `wallRide`, `railRun`, `chicane`, `skiJump`, `corkscrew`,
 `tunnelDrop`); `?course=default` ignores the course saved by the editor.
 
@@ -104,7 +104,18 @@ longer lines up turns **red**.
 
 ## The course
 
-Top to bottom, linked by sloped, curving track:
+The default course uses every piece type once, in this order: start, peg
+field, stairs, funnel, pinball bumpers, loop, half-pipe, splitter, gutter
+rails, winding, valley, wave track, drop and catch, chicane, bumpy road,
+spiral, wall ride, bouncy pads, three-way splitter, ski jump, corkscrew, a
+fork into two matching straights and a merge, big jump, tunnel drop,
+winding, bottleneck, finish, with curves and S-bends between them. It has
+not been raced headless yet. The course before the newer pieces is
+`?layout=classic`, described below. A course saved by the editor still loads
+in place of the default: use Reset course in the editor, or
+`?course=default`.
+
+The classic course, top to bottom, linked by sloped, curving track:
 
 1. **Start ramp**: 8 seeded spawn slots on a painted grid, under a gantry whose five lights count down and turn green on "Go!".
 2. **Peg field**: tilted Plinko board of cylinders.
