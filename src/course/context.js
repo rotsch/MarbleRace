@@ -1,6 +1,6 @@
 import {
   Group, Mesh, LineSegments, EdgesGeometry, BoxGeometry, CylinderGeometry, Vector3, Quaternion,
-  MeshStandardMaterial, DoubleSide,
+  MeshStandardMaterial, DoubleSide, BufferAttribute,
 } from 'three';
 import { ConvexGeometry } from 'three/examples/jsm/geometries/ConvexGeometry.js';
 import { TRACK } from '../config.js';
@@ -182,6 +182,11 @@ export class CourseContext {
 
   _visual(geometry, position, quaternion, edgeAngle = 25, look = null) {
     if (!this.group) return;
+    // Every course surface carries an `accent` value per vertex (see
+    // buildTrack); surfaces that have none get 0, plain.
+    if (!geometry.attributes.accent) {
+      geometry.setAttribute('accent', new BufferAttribute(new Float32Array(geometry.attributes.position.count), 1));
+    }
     const mesh = new Mesh(geometry, look ?? this.materials.surface);
     // Its own look (glass): kept through theme switches, like decoration.
     if (look) mesh.userData.decor = true;
@@ -233,7 +238,12 @@ export class CourseContext {
   // Cylinder with its axis along the local Y of `quat`.
   addCylinder(center, quat, halfHeight, radius, material) {
     const desc = this._place(this.RAPIER.ColliderDesc.cylinder(halfHeight, radius), center, quat);
-    if (material?.visual !== false) this._visual(new CylinderGeometry(radius, radius, halfHeight * 2, 20), center, quat);
+    if (material?.visual !== false) {
+      // Pegs and posts count as accents (red in the ITSENSE theme).
+      const g = new CylinderGeometry(radius, radius, halfHeight * 2, 20);
+      g.setAttribute('accent', new BufferAttribute(new Float32Array(g.attributes.position.count).fill(1), 1));
+      this._visual(g, center, quat);
+    }
     return this._physics(desc, material);
   }
 

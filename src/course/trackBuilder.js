@@ -1,5 +1,6 @@
 import { TRACK } from '../config.js';
 import { framePoint, tracePath } from './frame.js';
+import { BufferAttribute } from 'three';
 import { sweepRings, v2 } from './geometry.js';
 
 const JOINT_RELIEF = 0.005;
@@ -55,6 +56,7 @@ export function buildTrack(ctx, frames, opts = {}) {
   const d0 = piece?.mainD ?? 0;
   const shape = piece?.shape?.length ? piece.shape : null;
   let profile0 = null;
+  const accent = []; // per profile point: 0 floor, 1 rail top, -1 underside
   const rings = frames.map((f, i) => {
     const d = f.d - frames[0].d;
     let w = val(opts.width ?? TRACK.width, d, total, i);
@@ -75,9 +77,15 @@ export function buildTrack(ctx, frames, opts = {}) {
     const relief = opts.relief === false ? 0 : JOINT_RELIEF * Math.max(0, 1 - d / 0.35);
     const prof = uProfile(w.l + relief, w.r + relief, h.l, h.r, TRACK.railThickness, opts.floorThickness);
     if (!profile0) profile0 = prof;
+    const L = h.l < 0.012 ? 0 : 1, R = h.r < 0.012 ? 0 : 1; // an open side has no rail
+    accent.push(-1, L, L, 0, 0, R, R, -1);
     return prof.map((p) => framePoint(f, p.x, p.y - relief, 0));
   });
-  ctx.addSolid(sweepRings(rings, profile0), opts.material);
+  // `accent`: how far up its rail each vertex is, for themes that mark the
+  // rail tops (the ITSENSE theme paints them red).
+  const geometry = sweepRings(rings, profile0);
+  geometry.setAttribute('accent', new BufferAttribute(new Float32Array(accent), 1));
+  ctx.addSolid(geometry, opts.material);
   if (piece) piece.mainD = d0 + length;
   if (opts.path !== false) ctx.addPath(frames);
   return frames[frames.length - 1];
