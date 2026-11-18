@@ -2,7 +2,7 @@
 // whether every marble finishes, how long each section takes, and whether the
 // safety net (nudge / rescue) ever had to step in. Also audits energy: one
 // marble alone on the course may only ever lose energy.
-//   node scripts/sim.mjs [--seeds 10] [--max 240] [--layout full|loop|bottleneck|...] [--course edited.json] [--quiet] [--verbose]
+//   node scripts/sim.mjs [--seeds 10] [--max 240] [--layout full|loop|bottleneck|...] [--course edited.json] [--track name] [--quiet] [--verbose]
 import RAPIER from '@dimforge/rapier3d-compat';
 import { readFileSync } from 'node:fs';
 import { Race } from '../src/race.js';
@@ -19,7 +19,9 @@ const verbose = process.argv.includes('--verbose');
 const quiet = process.argv.includes('--quiet');
 const only = arg('seed', null);
 // --course: a course exported from the editor (JSON), instead of a layout.
-const courseFile = arg('course', null);
+// --track: a track saved in the tracks folder, by name.
+const track = arg('track', null);
+const courseFile = track ? new URL(`../tracks/${track}.json`, import.meta.url) : arg('course', null);
 const layout = courseFile ? JSON.parse(readFileSync(courseFile, 'utf8')) : arg('layout', 'full');
 
 await initPhysics(RAPIER);

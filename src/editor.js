@@ -4,6 +4,7 @@ import { makeFrame, frameQuat } from './course/frame.js';
 import { TYPES, defaultCourse, clone, linkMaps, validate, COURSE_VERSION, clampOption } from './course/pieces.js';
 import { shapeAt } from './course/trackBuilder.js';
 import { TRACK } from './config.js';
+import { listTracks, loadTrack, saveTrack, checkName, checkCourse } from './tracks.js';
 
 // Track editor (G): move and rotate placed pieces, snap their sockets
 // together, change their options, add and delete pieces.
@@ -17,6 +18,7 @@ import { TRACK } from './config.js';
 // sockets stand out with a pin and pulse; linked ones shrink to a grey dot.
 
 const STORE = 'marble-race-course';
+const STORE_NAME = 'marble-race-track'; // name of the track last loaded or saved
 const SNAP_DIST = 0.3; // units: a dragged socket this close to an open one snaps
 const MAX_UNDO = 100;
 const COLORS = { in: 0x16a34a, out: 0xf97316, linked: 0x8a8f98, bad: 0xdc2626, snap: 0x2563eb, shape: 0x7c3aed, shapeOn: 0xfacc15 };
@@ -187,6 +189,7 @@ export class Editor {
 
   resetCourse() {
     this._commit(defaultCourse(this.host.layout), { keepSelection: false });
+    this.trackName = '';
     try {
       localStorage.removeItem(STORE);
     } catch {
@@ -194,21 +197,54 @@ export class Editor {
     }
   }
 
+  // ---- saved tracks (tracks/<name>.json) ---------------------------------
+
+  get trackName() {
+    try {
+      return localStorage.getItem(STORE_NAME) || '';
+    } catch {
+      return '';
+    }
+  }
+
+  set trackName(name) {
+    try {
+      localStorage.setItem(STORE_NAME, name);
+    } catch {
+      // ignore
+    }
+  }
+
+  listTracks() {
+    return listTracks();
+  }
+
+  async loadTrack(name) {
+    const data = await loadTrack(name);
+    this._commit(data, { keepSelection: false });
+    this.trackName = checkName(name);
+  }
+
+  // Returns 'saved' or 'downloaded' (see tracks.js).
+  async saveTrack(name) {
+    const result = await saveTrack(name, this.data);
+    this.trackName = checkName(name);
+    return result;
+  }
+
   exportJson() {
     const blob = new Blob([JSON.stringify(this.data, null, 2)], { type: 'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = 'marble-course.json';
+    a.download = `${this.trackName || 'marble-course'}.json`;
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   }
 
   async importJson(file) {
-    const data = JSON.parse(await file.text());
-    if (data?.version !== COURSE_VERSION || !Array.isArray(data.pieces) || !Array.isArray(data.links)) {
-      throw new Error('not a marble course file');
-    }
+    const data = checkCourse(JSON.parse(await file.text()));
     this._commit(data, { keepSelection: false });
+    this.trackName = file.name.replace(/\.json$/i, '');
   }
 
   // ---- mode -------------------------------------------------------------

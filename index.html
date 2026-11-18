@@ -71,6 +71,18 @@
           <button id="ed-undo" title="Undo (Ctrl+Z)">Undo</button>
           <button id="ed-redo" title="Redo (Ctrl+Y)">Redo</button>
         </div>
+        <div id="ed-tracks">
+          <p class="sub">Tracks</p>
+          <div class="row">
+            <select id="ed-track-list" aria-label="Saved tracks"></select>
+            <button id="ed-track-load" title="Load the chosen track from the tracks folder (undo brings the course back)">Load</button>
+          </div>
+          <div class="row">
+            <input id="ed-track-name" type="text" spellcheck="false" placeholder="Track name" aria-label="Track name" />
+            <button id="ed-track-save" title="Save the course to tracks/&lt;name&gt;.json">Save</button>
+          </div>
+          <p id="ed-track-note" class="note"></p>
+        </div>
         <div class="row">
           <button id="ed-export" title="Save the course as a JSON file">Export</button>
           <button id="ed-import" title="Load a course JSON file">Import</button>

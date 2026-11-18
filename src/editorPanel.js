@@ -43,6 +43,27 @@ export class EditorPanel {
     act('ed-detach', () => editor.detach());
     act('ed-undo', () => editor.undoStep());
     act('ed-redo', () => editor.redoStep());
+    act('ed-track-load', async () => {
+      const name = $('ed-track-list').value;
+      if (!name) return;
+      await editor.loadTrack(name);
+      $('ed-track-name').value = name;
+      this._trackNote(`Loaded "${name}".`);
+    });
+    act('ed-track-save', async () => {
+      const name = $('ed-track-name').value.trim();
+      const names = await editor.listTracks();
+      if (names.includes(name) && !confirm(`Replace the saved track "${name}"?`)) return;
+      const how = await editor.saveTrack(name);
+      this._trackNote(how === 'saved'
+        ? `Saved as tracks/${name}.json.`
+        : `No dev server: downloaded ${name}.json. Put it in the tracks folder to keep it.`);
+      await this.refreshTracks(name);
+    });
+    $('ed-track-name').addEventListener('keydown', (e) => {
+      e.stopPropagation();
+      if (e.key === 'Enter') $('ed-track-save').click();
+    });
     act('ed-export', () => editor.exportJson());
     act('ed-import', () => $('ed-file').click());
     act('ed-reset', () => {
@@ -66,6 +87,25 @@ export class EditorPanel {
     editor.onChange = () => this.show();
   }
 
+  // Fill the saved-track list from the tracks folder.
+  async refreshTracks(select = this.editor.trackName) {
+    const list = $('ed-track-list');
+    let names = [];
+    try {
+      names = await this.editor.listTracks();
+    } catch (err) {
+      console.error(err);
+    }
+    list.replaceChildren(...(names.length ? names.map((n) => new Option(n, n)) : [new Option('(no saved tracks)', '')]));
+    if (names.includes(select)) list.value = select;
+    list.disabled = !names.length;
+    $('ed-track-load').disabled = !names.length;
+  }
+
+  _trackNote(text) {
+    $('ed-track-note').textContent = text;
+  }
+
   async _try(fn) {
     try {
       await fn();
@@ -79,6 +119,13 @@ export class EditorPanel {
     const ed = this.editor;
     this.box.hidden = !ed.active;
     document.body.classList.toggle('editing', ed.active);
+    // Opening the editor: list the saved tracks again (files may have been
+    // added to the folder), and offer the current track's name for saving.
+    if (ed.active && !this.opened) {
+      $('ed-track-name').value ||= ed.trackName;
+      this.refreshTracks();
+    }
+    this.opened = ed.active;
     if (!ed.active) return;
     $('ed-move').classList.toggle('on', ed.mode === 'translate');
     $('ed-rotate').classList.toggle('on', ed.mode === 'rotate');

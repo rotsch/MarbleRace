@@ -113,6 +113,12 @@ body.editing #ranking, body.editing #progress { display: none; }
 #ed-connect .sub { margin: 0 0 4px; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 600; }
 #ed-connect-list { display: flex; flex-direction: column; gap: 4px; }
 #ed-connect-list button { text-align: left; font-size: 12px; }
+#ed-tracks { display: flex; flex-direction: column; gap: 5px; border: 1px solid #ccc; padding: 6px 8px; }
+#ed-tracks .sub { margin: 0; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 600; }
+#ed-track-list, #ed-track-name { flex: 1; min-width: 0; }
+#ed-track-name { font: inherit; padding: 2px 4px; border: 1px solid #111; }
+#ed-track-note { margin: 0; font-size: 11px; color: #666; }
+#ed-track-note:empty { display: none; }
 #ed-problems { margin: 0; padding: 0; list-style: none; color: #b91c1c; font-size: 11px; }
 #ed-problems:empty { display: none; }
 #editor .note { margin: 0; color: #666; font-size: 11px; }

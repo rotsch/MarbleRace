@@ -97,8 +97,20 @@ longer lines up turns **red**.
 - **Fork** has two outputs and **Merge** two inputs, for routes that split and
   meet again. Race progress follows the links, so marbles are ranked and
   rescued correctly on either route.
+- **Tracks** (panel): saved tracks are JSON files in the `tracks/` folder,
+  and the file name is the track's name (`tracks/My track.json` is "My
+  track"). Pick one and **Load** it (Undo brings back the course you had), or
+  type a name and **Save** the current course as `tracks/<name>.json` (asks
+  before replacing one). Names are 1 to 60 letters, digits, spaces, `-` or
+  `_`. Saving writes the file through the dev server (`npm run dev` or
+  `npm run preview`); a static build has no server, so it lists the tracks
+  that were in the folder when it was built and Save downloads the file
+  instead (put it in `tracks/` to keep it). `?track=<name>` opens a saved
+  track, and `npm run sim -- --track <name>` races one headless.
+  `tracks/Default.json` and `tracks/Classic.json` are the two built-in
+  courses.
 - Every edit rebuilds the course (about 60 ms) and is saved in this browser.
-  Export / Import save and load the course as JSON;
+  Export / Import save and load the course as JSON from anywhere;
   `npm run sim -- --course marble-course.json` races an exported course headless.
   Reset course goes back to the original.
 
@@ -215,6 +227,7 @@ Their numbers are first settings and have not been measured in races yet.
 src/
   config.js            every tunable: WORLD_SCALE, marble material, track sizes, solver
   rng.js               seeded random numbers
+  tracks.js            list / load / save the tracks in tracks/ (via the dev server, see vite.config.js)
   physics.js           world setup, fixed-timestep accumulator
   marbles.js           marble bodies and their interpolation state
   race.js              spawn, ranking, finish sensor, safety net (no DOM, runs headless)

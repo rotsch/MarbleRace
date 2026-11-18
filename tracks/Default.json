@@ -1,0 +1,866 @@
+{
+  "version": 1,
+  "pieces": [
+    {
+      "id": "p1",
+      "type": "start",
+      "name": "Start",
+      "opts": {
+        "len": 2.6
+      },
+      "pose": {
+        "pos": [
+          0,
+          0,
+          0
+        ],
+        "yaw": 0,
+        "pitch": -0.13962634015954636
+      }
+    },
+    {
+      "id": "p2",
+      "type": "pegField",
+      "name": "Peg field",
+      "opts": {}
+    },
+    {
+      "id": "p3",
+      "type": "curve",
+      "name": "Curve 1",
+      "opts": {
+        "radius": 1.6,
+        "angle": -1.2217304763960306,
+        "pitch": -0.06981317007977318
+      }
+    },
+    {
+      "id": "p4",
+      "type": "stairs",
+      "name": "Stairs",
+      "opts": {}
+    },
+    {
+      "id": "p5",
+      "type": "funnel",
+      "name": "Funnel",
+      "opts": {
+        "side": 1,
+        "exitTurn": 0.8726646259971648
+      }
+    },
+    {
+      "id": "p6",
+      "type": "bumpers",
+      "name": "Pinball bumpers",
+      "opts": {}
+    },
+    {
+      "id": "p7",
+      "type": "loop",
+      "name": "Loop",
+      "opts": {}
+    },
+    {
+      "id": "p8",
+      "type": "curve",
+      "name": "S-bend 1",
+      "opts": {
+        "radius": 0.55,
+        "angle": 1.3089969389957472,
+        "pitch": -0.06981317007977318,
+        "bank": 0,
+        "rail": 0.65
+      }
+    },
+    {
+      "id": "p9",
+      "type": "curve",
+      "name": "S-bend 1",
+      "opts": {
+        "radius": 0.55,
+        "angle": -1.3089969389957472,
+        "pitch": -0.06981317007977318,
+        "bank": 0,
+        "rail": 0.65
+      }
+    },
+    {
+      "id": "p10",
+      "type": "halfPipe",
+      "name": "Half-pipe",
+      "opts": {
+        "side": 1
+      }
+    },
+    {
+      "id": "p11",
+      "type": "splitter",
+      "name": "Splitter",
+      "opts": {
+        "side": -1
+      }
+    },
+    {
+      "id": "p12",
+      "type": "railRun",
+      "name": "Gutter rails",
+      "opts": {}
+    },
+    {
+      "id": "p13",
+      "type": "winding",
+      "name": "Winding 1",
+      "opts": {
+        "bends": [
+          [
+            1.7,
+            80
+          ],
+          [
+            1.4,
+            -130
+          ],
+          [
+            1.5,
+            120
+          ],
+          [
+            1.6,
+            -90
+          ],
+          [
+            1.8,
+            60
+          ]
+        ]
+      }
+    },
+    {
+      "id": "p14",
+      "type": "valley",
+      "name": "Valley",
+      "opts": {}
+    },
+    {
+      "id": "p15",
+      "type": "curve",
+      "name": "Curve 2",
+      "opts": {
+        "radius": 1.6,
+        "angle": 1.0471975511965976,
+        "pitch": -0.06981317007977318
+      }
+    },
+    {
+      "id": "p16",
+      "type": "waves",
+      "name": "Wave track",
+      "opts": {}
+    },
+    {
+      "id": "p17",
+      "type": "dropCatch",
+      "name": "Drop and catch",
+      "opts": {}
+    },
+    {
+      "id": "p18",
+      "type": "curve",
+      "name": "S-bend 2",
+      "opts": {
+        "radius": 0.55,
+        "angle": -1.3089969389957472,
+        "pitch": -0.06981317007977318,
+        "bank": 0,
+        "rail": 0.65
+      }
+    },
+    {
+      "id": "p19",
+      "type": "curve",
+      "name": "S-bend 2",
+      "opts": {
+        "radius": 0.55,
+        "angle": 1.3089969389957472,
+        "pitch": -0.06981317007977318,
+        "bank": 0,
+        "rail": 0.65
+      }
+    },
+    {
+      "id": "p20",
+      "type": "chicane",
+      "name": "Chicane",
+      "opts": {
+        "side": 1
+      }
+    },
+    {
+      "id": "p21",
+      "type": "bumpyRoad",
+      "name": "Bumpy road",
+      "opts": {}
+    },
+    {
+      "id": "p22",
+      "type": "curve",
+      "name": "S-bend 3",
+      "opts": {
+        "radius": 0.55,
+        "angle": 1.3089969389957472,
+        "pitch": -0.06981317007977318,
+        "bank": 0,
+        "rail": 0.65
+      }
+    },
+    {
+      "id": "p23",
+      "type": "curve",
+      "name": "S-bend 3",
+      "opts": {
+        "radius": 0.55,
+        "angle": -1.3089969389957472,
+        "pitch": -0.06981317007977318,
+        "bank": 0,
+        "rail": 0.65
+      }
+    },
+    {
+      "id": "p24",
+      "type": "spiral",
+      "name": "Spiral",
+      "opts": {
+        "side": 1
+      }
+    },
+    {
+      "id": "p25",
+      "type": "wallRide",
+      "name": "Wall ride",
+      "opts": {
+        "angle": -2.6179938779914944
+      }
+    },
+    {
+      "id": "p26",
+      "type": "bouncyPads",
+      "name": "Bouncy pads",
+      "opts": {}
+    },
+    {
+      "id": "p27",
+      "type": "curve",
+      "name": "S-bend 4",
+      "opts": {
+        "radius": 0.55,
+        "angle": 1.3089969389957472,
+        "pitch": -0.06981317007977318,
+        "bank": 0,
+        "rail": 0.65
+      }
+    },
+    {
+      "id": "p28",
+      "type": "curve",
+      "name": "S-bend 4",
+      "opts": {
+        "radius": 0.55,
+        "angle": -1.3089969389957472,
+        "pitch": -0.06981317007977318,
+        "bank": 0,
+        "rail": 0.65
+      }
+    },
+    {
+      "id": "p29",
+      "type": "splitter3",
+      "name": "Three-way splitter",
+      "opts": {}
+    },
+    {
+      "id": "p30",
+      "type": "skiJump",
+      "name": "Ski jump",
+      "opts": {}
+    },
+    {
+      "id": "p31",
+      "type": "curve",
+      "name": "Curve 3",
+      "opts": {
+        "radius": 1.5,
+        "angle": 1.2217304763960306,
+        "pitch": -0.06981317007977318
+      }
+    },
+    {
+      "id": "p32",
+      "type": "corkscrew",
+      "name": "Corkscrew",
+      "opts": {
+        "side": -1
+      }
+    },
+    {
+      "id": "p33",
+      "type": "fork",
+      "name": "Fork",
+      "opts": {}
+    },
+    {
+      "id": "p34",
+      "type": "straight",
+      "name": "Left route",
+      "opts": {
+        "len": 1.6,
+        "pitch": -0.08726646259971647
+      }
+    },
+    {
+      "id": "p44",
+      "type": "straight",
+      "name": "Right route",
+      "opts": {
+        "len": 1.6,
+        "pitch": -0.08726646259971647
+      }
+    },
+    {
+      "id": "p35",
+      "type": "merge",
+      "name": "Merge",
+      "opts": {}
+    },
+    {
+      "id": "p36",
+      "type": "bigJump",
+      "name": "Big jump",
+      "opts": {
+        "side": -1
+      }
+    },
+    {
+      "id": "p37",
+      "type": "curve",
+      "name": "S-bend 5",
+      "opts": {
+        "radius": 0.55,
+        "angle": -1.3089969389957472,
+        "pitch": -0.06981317007977318,
+        "bank": 0,
+        "rail": 0.65
+      }
+    },
+    {
+      "id": "p38",
+      "type": "curve",
+      "name": "S-bend 5",
+      "opts": {
+        "radius": 0.55,
+        "angle": 1.3089969389957472,
+        "pitch": -0.06981317007977318,
+        "bank": 0,
+        "rail": 0.65
+      }
+    },
+    {
+      "id": "p39",
+      "type": "tunnelDrop",
+      "name": "Tunnel drop",
+      "opts": {
+        "exitTurn": -1.0471975511965976
+      }
+    },
+    {
+      "id": "p40",
+      "type": "winding",
+      "name": "Winding 2",
+      "opts": {
+        "bends": [
+          [
+            1.5,
+            -100
+          ],
+          [
+            1.6,
+            120
+          ],
+          [
+            1.4,
+            -110
+          ],
+          [
+            1.7,
+            90
+          ]
+        ]
+      }
+    },
+    {
+      "id": "p41",
+      "type": "curve",
+      "name": "Curve 4",
+      "opts": {
+        "radius": 1.4,
+        "angle": -0.8726646259971648,
+        "pitch": -0.06981317007977318,
+        "rail": 0.6
+      }
+    },
+    {
+      "id": "p42",
+      "type": "bottleneck",
+      "name": "Bottleneck",
+      "opts": {}
+    },
+    {
+      "id": "p43",
+      "type": "finish",
+      "name": "Finish",
+      "opts": {}
+    }
+  ],
+  "links": [
+    {
+      "from": [
+        "p1",
+        0
+      ],
+      "to": [
+        "p2",
+        0
+      ]
+    },
+    {
+      "from": [
+        "p2",
+        0
+      ],
+      "to": [
+        "p3",
+        0
+      ]
+    },
+    {
+      "from": [
+        "p3",
+        0
+      ],
+      "to": [
+        "p4",
+        0
+      ]
+    },
+    {
+      "from": [
+        "p4",
+        0
+      ],
+      "to": [
+        "p5",
+        0
+      ]
+    },
+    {
+      "from": [
+        "p5",
+        0
+      ],
+      "to": [
+        "p6",
+        0
+      ]
+    },
+    {
+      "from": [
+        "p6",
+        0
+      ],
+      "to": [
+        "p7",
+        0
+      ]
+    },
+    {
+      "from": [
+        "p7",
+        0
+      ],
+      "to": [
+        "p8",
+        0
+      ]
+    },
+    {
+      "from": [
+        "p8",
+        0
+      ],
+      "to": [
+        "p9",
+        0
+      ]
+    },
+    {
+      "from": [
+        "p9",
+        0
+      ],
+      "to": [
+        "p10",
+        0
+      ]
+    },
+    {
+      "from": [
+        "p10",
+        0
+      ],
+      "to": [
+        "p11",
+        0
+      ]
+    },
+    {
+      "from": [
+        "p11",
+        0
+      ],
+      "to": [
+        "p12",
+        0
+      ]
+    },
+    {
+      "from": [
+        "p12",
+        0
+      ],
+      "to": [
+        "p13",
+        0
+      ]
+    },
+    {
+      "from": [
+        "p13",
+        0
+      ],
+      "to": [
+        "p14",
+        0
+      ]
+    },
+    {
+      "from": [
+        "p14",
+        0
+      ],
+      "to": [
+        "p15",
+        0
+      ]
+    },
+    {
+      "from": [
+        "p15",
+        0
+      ],
+      "to": [
+        "p16",
+        0
+      ]
+    },
+    {
+      "from": [
+        "p16",
+        0
+      ],
+      "to": [
+        "p17",
+        0
+      ]
+    },
+    {
+      "from": [
+        "p17",
+        0
+      ],
+      "to": [
+        "p18",
+        0
+      ]
+    },
+    {
+      "from": [
+        "p18",
+        0
+      ],
+      "to": [
+        "p19",
+        0
+      ]
+    },
+    {
+      "from": [
+        "p19",
+        0
+      ],
+      "to": [
+        "p20",
+        0
+      ]
+    },
+    {
+      "from": [
+        "p20",
+        0
+      ],
+      "to": [
+        "p21",
+        0
+      ]
+    },
+    {
+      "from": [
+        "p21",
+        0
+      ],
+      "to": [
+        "p22",
+        0
+      ]
+    },
+    {
+      "from": [
+        "p22",
+        0
+      ],
+      "to": [
+        "p23",
+        0
+      ]
+    },
+    {
+      "from": [
+        "p23",
+        0
+      ],
+      "to": [
+        "p24",
+        0
+      ]
+    },
+    {
+      "from": [
+        "p24",
+        0
+      ],
+      "to": [
+        "p25",
+        0
+      ]
+    },
+    {
+      "from": [
+        "p25",
+        0
+      ],
+      "to": [
+        "p26",
+        0
+      ]
+    },
+    {
+      "from": [
+        "p26",
+        0
+      ],
+      "to": [
+        "p27",
+        0
+      ]
+    },
+    {
+      "from": [
+        "p27",
+        0
+      ],
+      "to": [
+        "p28",
+        0
+      ]
+    },
+    {
+      "from": [
+        "p28",
+        0
+      ],
+      "to": [
+        "p29",
+        0
+      ]
+    },
+    {
+      "from": [
+        "p29",
+        0
+      ],
+      "to": [
+        "p30",
+        0
+      ]
+    },
+    {
+      "from": [
+        "p30",
+        0
+      ],
+      "to": [
+        "p31",
+        0
+      ]
+    },
+    {
+      "from": [
+        "p31",
+        0
+      ],
+      "to": [
+        "p32",
+        0
+      ]
+    },
+    {
+      "from": [
+        "p32",
+        0
+      ],
+      "to": [
+        "p33",
+        0
+      ]
+    },
+    {
+      "from": [
+        "p33",
+        0
+      ],
+      "to": [
+        "p34",
+        0
+      ]
+    },
+    {
+      "from": [
+        "p34",
+        0
+      ],
+      "to": [
+        "p35",
+        0
+      ]
+    },
+    {
+      "from": [
+        "p35",
+        0
+      ],
+      "to": [
+        "p36",
+        0
+      ]
+    },
+    {
+      "from": [
+        "p36",
+        0
+      ],
+      "to": [
+        "p37",
+        0
+      ]
+    },
+    {
+      "from": [
+        "p37",
+        0
+      ],
+      "to": [
+        "p38",
+        0
+      ]
+    },
+    {
+      "from": [
+        "p38",
+        0
+      ],
+      "to": [
+        "p39",
+        0
+      ]
+    },
+    {
+      "from": [
+        "p39",
+        0
+      ],
+      "to": [
+        "p40",
+        0
+      ]
+    },
+    {
+      "from": [
+        "p40",
+        0
+      ],
+      "to": [
+        "p41",
+        0
+      ]
+    },
+    {
+      "from": [
+        "p41",
+        0
+      ],
+      "to": [
+        "p42",
+        0
+      ]
+    },
+    {
+      "from": [
+        "p42",
+        0
+      ],
+      "to": [
+        "p43",
+        0
+      ]
+    },
+    {
+      "from": [
+        "p33",
+        1
+      ],
+      "to": [
+        "p44",
+        0
+      ]
+    },
+    {
+      "from": [
+        "p44",
+        0
+      ],
+      "to": [
+        "p35",
+        1
+      ]
+    }
+  ]
+}

@@ -12,6 +12,7 @@ import { Sound } from './audio.js';
 import { Editor, loadStoredCourse } from './editor.js';
 import { EditorPanel } from './editorPanel.js';
 import { defaultCourse } from './course/pieces.js';
+import { loadTrack } from './tracks.js';
 
 loadStored(); // physics values the player set last time
 
@@ -29,6 +30,17 @@ const layout = params.get('layout') || 'full';
 let course = params.get('layout') || params.get('course') === 'default'
   ? defaultCourse(layout)
   : loadStoredCourse() ?? defaultCourse(layout);
+// ?track=<name>: a track saved in the tracks folder.
+const trackParam = params.get('track');
+let trackLoaded = null;
+if (trackParam) {
+  try {
+    course = await loadTrack(trackParam);
+    trackLoaded = trackParam;
+  } catch (err) {
+    console.error(`Track "${trackParam}" did not load:`, err);
+  }
+}
 // Marble the leader's view rides on: the leader, or once everyone has
 // finished, whoever led last.
 let povIndex = null;
@@ -228,6 +240,7 @@ editor = new Editor(view, rig, {
 });
 handlers.editor = editor;
 window.editor = editor; // console access, like window.race
+if (trackLoaded) editor.trackName = trackLoaded;
 const editorPanel = new EditorPanel(editor, { onTest: () => setEditing(false, true) });
 function setEditing(on, test = false) {
   if (on) {
