@@ -8,7 +8,9 @@ const LANE = 0.8; // lane centres sit this far apart
 // three lanes. The middle lane runs straight; the outer two each swing out
 // in a loop to their own side, one short and one long, and come back into
 // line. All three drop the same height and funnel back into one track.
-// opts: { radius (of the loops), leftLeg, rightLeg (straight part of each loop) }
+// opts: { radius (of the loops), leftLeg, rightLeg (straight part of each loop),
+//         tipGap (distance between the wedges' points: smaller sends more
+//         marbles to the outer lanes, larger more down the middle) }
 export function build(ctx, entry, opts = {}) {
   const flareLen = 1.8;
   const wide = 2 * LANE + TRACK.width;
@@ -19,10 +21,11 @@ export function build(ctx, entry, opts = {}) {
   // Wedges between the lanes: knife edge pointing upstream, widening to
   // cover the gap between neighbouring lanes' walls.
   const hw = LANE / 2 - TRACK.width / 2 + 0.02, h = 0.3;
-  for (const x of [LANE / 2, -LANE / 2]) {
-    const pts = [];
+  const tip = Math.min(1.3, Math.max(0.1, opts.tipGap ?? 0.6)) / 2;
+  for (const k of [1, -1]) {
+    const x = k * LANE / 2, pts = [];
     for (const y of [-0.03, h]) {
-      pts.push(framePoint(s, x, y, -0.85), framePoint(s, x + hw, y, 0), framePoint(s, x - hw, y, 0));
+      pts.push(framePoint(s, k * tip, y, -0.85), framePoint(s, x + hw, y, 0), framePoint(s, x - hw, y, 0));
       pts.push(framePoint(s, x + hw, y, 0.25), framePoint(s, x - hw, y, 0.25));
     }
     ctx.addHull(pts);

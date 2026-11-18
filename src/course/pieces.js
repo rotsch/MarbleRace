@@ -1,6 +1,6 @@
 import { Vector3 } from 'three';
 import { deg } from './frame.js';
-import { MARBLE } from '../config.js';
+import { MARBLE, TRACK } from '../config.js';
 import * as start from './sections/start.js';
 import * as straight from './sections/straight.js';
 import * as curve from './sections/curve.js';
@@ -80,6 +80,7 @@ export const TYPES = {
       f('pitch', 'Slope', 'deg', -15, -2, 0.5, -6),
       f('gap', 'Rail spacing', 'len', 0.08, 0.17, 0.005, 0.12),
       f('drop', 'Catch tray below', 'len', 0.4, 1, 0.05, 0.5),
+      f('entryWidth', 'Entry width', 'len', +(MARBLE.radius * 2 + 0.02).toFixed(2), TRACK.width, 0.01, +(MARBLE.radius * 2 + 0.06).toFixed(2)),
     ],
   },
   // Bends
@@ -209,6 +210,7 @@ export const TYPES = {
       f('radius', 'Loop radius', 'len', 0.8, 1.6, 0.05, 1.0),
       f('leftLeg', 'Left loop leg', 'len', 0, 2.5, 0.05, 0.5),
       f('rightLeg', 'Right loop leg', 'len', 0, 2.5, 0.05, 1.2),
+      f('tipGap', 'Divider point spacing', 'len', 0.1, 1.3, 0.05, 0.6),
     ],
   },
   // Start and finish

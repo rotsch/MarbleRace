@@ -2,7 +2,7 @@ import { Vector3 } from 'three';
 import { tracePath, framePoint, makeFrame, lastFrame, deg } from '../frame.js';
 import { buildTrack, widthStops } from '../trackBuilder.js';
 import { sweepRings, v2 } from '../geometry.js';
-import { rejoin } from './rejoin.js';
+import { rejoin, trayBackWall } from './rejoin.js';
 import { TRACK, MARBLE } from '../../config.js';
 
 // Gutter rails: the track narrows to single file and hands the marbles over
@@ -13,7 +13,8 @@ import { TRACK, MARBLE } from '../../config.js';
 // The rails are spaced so a marble sitting on them is exactly as high as on
 // the track floor, and they rise out of the floor (and sink into it at the
 // end), so there is no step at either hand-over.
-// opts: { len (of the rails), pitch, gap (between rail centres), drop (tray below the rails) }
+// opts: { len (of the rails), pitch, gap (between rail centres), drop (tray below the rails),
+//         entryWidth (of the track where it meets the rails) }
 const RAIL_R = 0.02;
 const SINK = 0.03; // how far the rails start and end below their riding height
 
@@ -25,7 +26,7 @@ export function build(ctx, entry, opts = {}) {
   const yRail = r - Math.sqrt((r + RAIL_R) ** 2 - (gap / 2) ** 2);
 
   // Lead-in narrows to a little over one marble, so marbles reach the rails centred.
-  const narrow = 2 * r + 0.06, leadLen = 1.6;
+  const narrow = Math.min(TRACK.width, Math.max(2 * r + 0.02, opts.entryWidth ?? 2 * r + 0.06)), leadLen = 1.6;
   const lead = tracePath(entry, [{ len: 0.6, pitch }, { len: leadLen - 0.6 }]);
   buildTrack(ctx, lead, { width: widthStops([[0, TRACK.width], [1.1, narrow]]), rail: 0.3 });
   const a = lastFrame(lead);
@@ -69,7 +70,7 @@ export function build(ctx, entry, opts = {}) {
     low: { pos: trayStart, width: 1.5, wideLen: trayLen + 0.4, taper: 1.6, lead: trayLen + 0.5, rail: (d) => (d < trayLen + 0.1 ? 0.45 : 0.2) },
     len: opts.rejoinLen ?? 6,
   });
-  ctx.addBoxAt(lowFrames[0], { x: 0, y: 0.3, z: -0.02 }, 0.75 + TRACK.railThickness, 0.34, 0.02);
+  trayBackWall(ctx, lowFrames[0], 0.75, lead);
   ctx.addSensorAt('rails: made it', makeFrame(endPos, a.yaw, 0), { x: 0, y: 0.15, z: 0.5 }, 0.35, 0.2, 0.05);
   return exit;
 }

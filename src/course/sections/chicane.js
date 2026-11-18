@@ -1,7 +1,7 @@
 import { Vector3 } from 'three';
 import { tracePath, arc, makeFrame, lastFrame, deg } from '../frame.js';
 import { buildTrack } from '../trackBuilder.js';
-import { rejoin } from './rejoin.js';
+import { rejoin, trayBackWall } from './rejoin.js';
 import { TRACK } from '../../config.js';
 
 // Chicane: three tight unbanked bends, one way, back the other way twice as
@@ -69,7 +69,7 @@ export function build(ctx, entry, opts = {}) {
     },
     len: opts.rejoinLen ?? 6,
   });
-  ctx.addBoxAt(lowFrames[0], { x: 0, y: 0.3, z: -0.02 }, width / 2 + TRACK.railThickness, 0.34, 0.02);
+  trayBackWall(ctx, lowFrames[0], width / 2, lead);
   ctx.addSensorAt('chicane: made it', mainStart, { x: 0, y: 0.15, z: 0.4 }, 0.35, 0.2, 0.05);
   return exit;
 }

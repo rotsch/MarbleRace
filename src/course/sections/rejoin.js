@@ -78,3 +78,19 @@ export function rejoin(ctx, { main, low, len, lowPitch = 0.05, mainSide }) {
   };
   return { exit: merge(ctx, center), lowFrames, mainFrames, mainPitch };
 }
+
+// Back wall at the upstream end of a catch tray, so marbles thrown onto the
+// tray can't roll off its back. The entry track passes over the tray there,
+// so the wall stops short of that track's underside instead of poking up
+// through its floor (which left a step across the entry). `over` is the
+// frames of the track above.
+export function trayBackWall(ctx, trayFrame, halfWidth, over) {
+  const F = new Vector3(Math.sin(trayFrame.yaw), 0, Math.cos(trayFrame.yaw));
+  let top = 0.64, best = Infinity;
+  for (const f of over) {
+    const along = Math.abs(f.pos.clone().sub(trayFrame.pos).dot(F));
+    if (along < best) { best = along; if (along < 0.15) top = Math.min(0.64, f.pos.y - trayFrame.pos.y - TRACK.floorThickness - 0.03); }
+  }
+  if (top < 0.1) return;
+  ctx.addBoxAt(trayFrame, { x: 0, y: (top - 0.04) / 2, z: -0.02 }, halfWidth + TRACK.railThickness, (top + 0.04) / 2, 0.02);
+}
