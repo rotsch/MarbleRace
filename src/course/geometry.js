@@ -18,7 +18,7 @@ export function signedVolume(pos, idx) {
 //  profile2D: Vector2[] of one ring's cross-section, used to triangulate end caps
 //  loop: connect the last ring back to the first (lathe-style), no caps
 // Returns an indexed BufferGeometry forming a closed solid with outward winding.
-export function sweepRings(rings, profile2D, { loop = false } = {}) {
+export function sweepRings(rings, profile2D, { loop = false, endProfile } = {}) {
   const n = rings[0].length;
   const m = rings.length;
   const pos = new Float32Array(m * n * 3);
@@ -45,14 +45,20 @@ export function sweepRings(rings, profile2D, { loop = false } = {}) {
     }
   }
   if (!loop) {
+    // Each cap is cut from its own outline: rings may change shape along the
+    // sweep (same point count), and endProfile is the last ring's shape.
     const last = (m - 1) * n;
-    for (const t of ShapeUtils.triangulateShape(profile2D, [])) {
-      const [p, q, r] = t.map((k) => profile2D[k]);
-      const area = (q.x - p.x) * (r.y - p.y) - (q.y - p.y) * (r.x - p.x);
-      const [a, b, c] = area > 0 ? t : [t[0], t[2], t[1]]; // a,b,c is CCW => faces +sweep
-      idx.push(a, c, b); // start cap faces backwards
-      idx.push(last + a, last + b, last + c);
-    }
+    const cap = (profile, base, back) => {
+      for (const t of ShapeUtils.triangulateShape(profile, [])) {
+        const [p, q, r] = t.map((k) => profile[k]);
+        const area = (q.x - p.x) * (r.y - p.y) - (q.y - p.y) * (r.x - p.x);
+        const [a, b, c] = area > 0 ? t : [t[0], t[2], t[1]]; // a,b,c is CCW => faces +sweep
+        if (back) idx.push(base + a, base + c, base + b); // start cap faces backwards
+        else idx.push(base + a, base + b, base + c);
+      }
+    };
+    cap(profile2D, 0, true);
+    cap(endProfile ?? profile2D, last, false);
   }
   if (signedVolume(pos, idx) < 0) console.warn('sweepRings: inward-facing solid');
   const g = new BufferGeometry();

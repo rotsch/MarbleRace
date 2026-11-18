@@ -2,6 +2,7 @@ import { Vector3 } from 'three';
 import { tracePath, arc, makeFrame, framePoint, lastFrame, deg } from '../frame.js';
 import { buildTrack } from '../trackBuilder.js';
 import { sweepRings, v2 } from '../geometry.js';
+import { TRACK } from '../../config.js';
 
 // Corkscrew: a see-through tube that winds around a line running straight
 // ahead and down, like a stretched-out spring. Marbles roll round its inside,
@@ -61,17 +62,35 @@ export function build(ctx, entry, opts = {}) {
   }
   // Closed tube: a C-shaped ring with a hairline slit on top, so it is a
   // simple polygon the sweep can cap; nothing can pass through the slit.
-  const slit = 0.004, N = 28, ring = [];
-  for (let k = 0; k <= N; k++) {
-    const t = Math.PI / 2 + slit + ((2 * Math.PI - 2 * slit) * k) / N;
-    ring.push(v2(RI * Math.cos(t), RI * Math.sin(t)));
-  }
-  for (let k = N; k >= 0; k--) {
-    const t = Math.PI / 2 + slit + ((2 * Math.PI - 2 * slit) * k) / N;
-    ring.push(v2(RO * Math.cos(t), RO * Math.sin(t)));
-  }
+  // At the mouth the ring is a rounded square as wide as the track, with a
+  // flat floor level with it, and it narrows smoothly into the round tube
+  // over MORPH. A round mouth narrower than the track would leave its rim
+  // across the track edges, where marbles get stuck.
+  // ring(s): s = 0 square mouth, 1 round tube. Each point lies on a ray from
+  // the centre line; a superellipse gives the squared shape.
+  const W = TRACK.width / 2, TOP = 0.3, P = 6;
+  const shape = (t, s, grow) => {
+    const c = Math.cos(t), sn = Math.sin(t);
+    const hx = W + grow, hy = (sn < 0 ? RI : TOP) + grow;
+    const sq = 1 / Math.pow(Math.abs(c / hx) ** P + Math.abs(sn / hy) ** P, 1 / P);
+    const r = sq + (RI + grow - sq) * s;
+    return v2(r * c, r * sn);
+  };
+  const slit = 0.004, N = 40;
+  const ring = (s) => {
+    const pts = [];
+    for (let k = 0; k <= N; k++) pts.push(shape(Math.PI / 2 + slit + ((2 * Math.PI - 2 * slit) * k) / N, s, 0));
+    for (let k = N; k >= 0; k--) pts.push(shape(Math.PI / 2 + slit + ((2 * Math.PI - 2 * slit) * k) / N, s, RO - RI));
+    return pts;
+  };
+  const MORPH = 0.7;
+  const morph = (x) => { const u = Math.min(1, x / MORPH); return u * u * (3 - 2 * u); };
+  const round = ring(1);
   ctx.setCamera({ type: 'offset', offset: L.clone().multiplyScalar(-side * 3.6).add(new Vector3(0, 1.4, 0)) });
-  ctx.addSolid(sweepRings(frames.map((f) => ring.map((p) => framePoint(f, p.x, p.y, 0))), ring), undefined, 'glass');
+  const place = (f, r) => r.map((p) => framePoint(f, p.x, p.y, 0));
+  // One sweep (a seam between two meshes would snag marbles), its mouth cap
+  // cut from the square outline and its far cap from the round one.
+  ctx.addSolid(sweepRings(frames.map((f) => place(f, f.d < MORPH ? ring(morph(f.d)) : round)), ring(0), { endProfile: round }), undefined, 'glass');
   // Inside the tube: never a rescue spot.
   for (const f of frames) ctx.addPathPoint(f.pos, f.U, f.F, false);
   ctx.setCamera(null);
