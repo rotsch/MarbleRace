@@ -331,7 +331,7 @@ export class Editor {
       if (!o.isMesh || o.isInstancedMesh || o.userData.editor || o.userData.decor) return;
       const h = new THREE.Mesh(o.geometry, this.mat.highlight);
       h.userData.editor = true;
-      h.userData.decor = true; // keeps the look switch from changing its material
+      h.userData.decor = true; // keeps the theme switch from changing its material
       h.renderOrder = 3;
       o.add(h);
       this.highlight.push(h);

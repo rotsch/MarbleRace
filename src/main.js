@@ -219,7 +219,7 @@ const handlers = {
   debug: (on) => (sound.click(on ? 1.2 : 0.9), view.setDebug(on)),
   wireframe: (on) => (sound.click(on ? 1.2 : 0.9), view.setWireframe(on)),
   camera: (mode) => (sound.click(), rig.setMode(mode)),
-  look: (look) => (sound.click(look === 'white' ? 0.9 : 1.2), view.setLook(look)),
+  theme: (theme) => (sound.click(theme === 'white' ? 0.9 : 1.2), view.setTheme(theme)),
   editing: () => editor.active,
   edit: () => setEditing(!editor.active),
 };
@@ -338,8 +338,9 @@ try {
   course = defaultCourse(layout);
   restart(ui.seed.value, false);
 }
-// ?look=neon (or pictures) starts in that look.
-if (params.get('look')) ui.setLook(params.get('look'), handlers);
+// ?theme=neon (or itsense, pictures) starts in that theme; ?look= still works.
+const startTheme = params.get('theme') ?? params.get('look');
+if (startTheme) ui.setTheme(startTheme, handlers);
 
 // Dev aid: ?cam=x,y,z,tx,ty,tz starts in free camera at a fixed viewpoint.
 if (params.get('cam')) {

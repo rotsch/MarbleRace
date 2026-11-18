@@ -183,7 +183,7 @@ export class CourseContext {
   _visual(geometry, position, quaternion, edgeAngle = 25, look = null) {
     if (!this.group) return;
     const mesh = new Mesh(geometry, look ?? this.materials.surface);
-    // Its own look (glass): kept through look switches, like decoration.
+    // Its own look (glass): kept through theme switches, like decoration.
     if (look) mesh.userData.decor = true;
     const lines = new LineSegments(new EdgesGeometry(geometry, edgeAngle), this.materials.outline);
     mesh.add(lines);

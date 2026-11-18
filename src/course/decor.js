@@ -224,14 +224,15 @@ export function dressStart(ctx, frames, railHeight, lineZ) {
   ctx.startLights = setStartLights;
 }
 
-// Colours of the structures for the white look or the neon look (T).
-const LOOKS = {
+// Colours of the structures for each theme (T); others use white.
+const THEMES = {
   white: { frame: 0x2a2a2a, white: 0xffffff, seat: 0xd9dde3, emissive: 0x000000 },
   neon: { frame: 0xff2a6d, white: 0x2b0f54, seat: 0x05d9e8, emissive: 0x330818 },
+  itsense: { frame: 0xd10007, white: 0xffffff, seat: 0x25476d, emissive: 0x000000 },
 };
-export function setDecorLook(look) {
+export function setDecorTheme(theme) {
   if (!M) return;
-  const c = LOOKS[look] ?? LOOKS.white;
+  const c = THEMES[theme] ?? THEMES.white;
   M.frame.color.set(c.frame);
   M.frame.emissive.set(c.emissive);
   M.white.color.set(c.white);

@@ -21,7 +21,7 @@ export class UI {
     this.speed = $('speed');
     this.debug = $('debug');
     this.camera = $('camera');
-    this.look = $('look');
+    this.theme = $('theme');
     this.hint = $('hint');
     this.leader = $('leader');
     this.markers = $('progress-markers');
@@ -63,9 +63,9 @@ export class UI {
       this.camera.blur(); // so the game keys work again right away
     });
     this._buildPhysics(handlers);
-    this.look.addEventListener('change', () => {
-      this.setLook(this.look.value, handlers);
-      this.look.blur();
+    this.theme.addEventListener('change', () => {
+      this.setTheme(this.theme.value, handlers);
+      this.theme.blur();
     });
     window.addEventListener('keydown', (e) => {
       const t = e.target;
@@ -116,9 +116,9 @@ export class UI {
         const modes = [...this.camera.options].map((o) => o.value);
         this.setCamera(modes[(modes.indexOf(this.camera.value) + 1) % modes.length], handlers);
       } else if (e.key === 't' || e.key === 'T') {
-        // Cycle white -> neon dusk -> picture mosaic -> white.
-        const looks = [...this.look.options].filter((o) => !o.disabled).map((o) => o.value);
-        this.setLook(looks[(looks.indexOf(this.look.value) + 1) % looks.length], handlers);
+        // Cycle white -> neon dusk -> ITSENSE -> picture mosaic -> white.
+        const themes = [...this.theme.options].filter((o) => !o.disabled).map((o) => o.value);
+        this.setTheme(themes[(themes.indexOf(this.theme.value) + 1) % themes.length], handlers);
       } else if (e.key === 'r' || e.key === 'R') {
         handlers.resetKey(this.seed.value.trim() || '1');
       }
@@ -251,14 +251,15 @@ export class UI {
     }
   }
 
-  async setLook(look, handlers) {
-    this.look.value = look;
-    const shown = await handlers.look(look);
+  async setTheme(theme, handlers) {
+    this.theme.value = theme;
+    document.body.dataset.theme = theme; // panels restyle for some themes (style.css)
+    const shown = await handlers.theme(theme);
     if (!shown) {
-      // No pictures in textures/: take that look out of the cycle.
-      this.look.querySelector('option[value="pictures"]').disabled = true;
+      // No pictures in textures/: take that theme out of the cycle.
+      this.theme.querySelector('option[value="pictures"]').disabled = true;
       this.hint.textContent = 'No track textures: add pictures to the textures/ folder.';
-      this.setLook('white', handlers);
+      this.setTheme('white', handlers);
     }
   }
 

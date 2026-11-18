@@ -221,3 +221,40 @@ body.editing #ranking, body.editing #progress { display: none; }
 @media (max-width: 560px) {
   #controls { top: auto; bottom: 14px; max-height: 50vh; }
 }
+/* ITSENSE theme: the style of itsense.ch. Inter (Arial, Helvetica if it is
+   not installed), light text weight, dark slate type on white panels,
+   brand-red accents, red outlined buttons that fill red on hover. */
+body[data-theme='itsense'] {
+  --its-red: #d10007; --its-slate: #17262f; --its-grey: #4a5257; --its-page: #eceef0;
+  font-family: Inter, Arial, Helvetica, sans-serif; color: var(--its-slate); background: var(--its-page);
+}
+body[data-theme='itsense'] .panel {
+  background: rgba(255, 255, 255, 0.94); border: none; border-top: 3px solid var(--its-red);
+  box-shadow: 0 6px 24px rgba(23, 38, 47, 0.12);
+}
+body[data-theme='itsense'] h2,
+body[data-theme='itsense'] #physics summary,
+body[data-theme='itsense'] #leader .label,
+body[data-theme='itsense'] #debug-options legend { color: var(--its-red); font-weight: 700; }
+body[data-theme='itsense'] li .pos,
+body[data-theme='itsense'] li .time,
+body[data-theme='itsense'] #clock,
+body[data-theme='itsense'] #hint,
+body[data-theme='itsense'] #progress .ends { color: var(--its-grey); }
+body[data-theme='itsense'] li.done .name,
+body[data-theme='itsense'] #leader .name { font-weight: 700; }
+body[data-theme='itsense'] button,
+body[data-theme='itsense'] #start-race { border-color: var(--its-red); color: var(--its-slate); background: #fff; }
+body[data-theme='itsense'] button:hover,
+body[data-theme='itsense'] #start-race:hover { background: var(--its-red); border-color: var(--its-red); color: #fff; }
+body[data-theme='itsense'] #start-race::after { content: ' \2197'; color: var(--its-red); }
+body[data-theme='itsense'] #start-race:hover::after { color: #fff; }
+body[data-theme='itsense'] #sound-toggle { background: none; color: var(--its-slate); }
+body[data-theme='itsense'] #sound-toggle:hover { background: var(--its-page); color: var(--its-red); }
+body[data-theme='itsense'] select,
+body[data-theme='itsense'] input[type='text'] { border: 1px solid #c4c4c4; background: #fff; color: var(--its-slate); font-family: inherit; }
+body[data-theme='itsense'] input[type='range'],
+body[data-theme='itsense'] input[type='checkbox'] { accent-color: var(--its-red); }
+body[data-theme='itsense'] #progress-line::before,
+body[data-theme='itsense'] #progress-line::after { background: var(--its-slate); }
+body[data-theme='itsense'] #lineup .card.lead .slot { border-color: var(--its-red); }

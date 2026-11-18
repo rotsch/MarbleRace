@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 
-// "Neon dusk": the coloured look (T). The white room becomes an evening sky
+// "Neon dusk": the coloured theme (T). The white room becomes an evening sky
 // over an endless glowing grid: a gradient from deep indigo to a hot pink
 // horizon, a big striped sun sinking ahead of the course, twinkling stars,
 // and low-poly shapes drifting around the course. The track runs through a
@@ -9,7 +9,7 @@ import * as THREE from 'three';
 // apart), with candy stripes on the floors, brighter rails and dark
 // undersides. Gantries and grandstands turn neon.
 //
-// Everything here is visual only; the white look stays the default.
+// Everything here is visual only; the white theme stays the default.
 
 const HORIZON = new THREE.Color(0xff6f61);
 const SUN_DIR = new THREE.Vector3(0.35, 0.07, 1).normalize();

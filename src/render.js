@@ -2,8 +2,9 @@ import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { MARBLE } from './config.js';
 import { applyTrackTexture } from './trackTexture.js';
-import { NeonTheme } from './theme.js';
-import { setDecorLook } from './course/decor.js';
+import { NeonTheme } from './themes/neon.js';
+import { ItsenseTheme } from './themes/itsense.js';
+import { setDecorTheme } from './course/decor.js';
 import { colorDesign, marbleMaterial } from './designs.js';
 
 // Renderer, the boundless white space, lighting, marble meshes and the debug overlay.
@@ -64,9 +65,10 @@ export class View {
     };
     this.meshStats = null;
 
-    // Looks (T): 'white' (default), 'neon' (see theme.js), 'pictures'.
-    this.look = 'white';
-    this.theme = new NeonTheme(this.scene);
+    // Themes (T): 'white' (default), 'neon' and 'itsense' (see themes/),
+    // 'pictures'.
+    this.themeName = 'white';
+    this.themes = { neon: new NeonTheme(this.scene), itsense: new ItsenseTheme(this.scene) };
     this.clock = new THREE.Clock();
 
     window.addEventListener('resize', () => this.resize());
@@ -91,7 +93,7 @@ export class View {
     this.shotMeshes?.clear();
     this.courseGroup = race.course.group;
     this.scene.add(this.courseGroup);
-    this.theme.setCourse(race.course);
+    for (const t of Object.values(this.themes)) t.setCourse(race.course);
     this._applyTrackMaterial();
     this.meshStats = null;
     if (this.wireframe) this._addWireframe();
@@ -267,28 +269,31 @@ export class View {
     g.setAttribute('color', new THREE.BufferAttribute(colors, 4));
   }
 
-  // Switch the look. Resolves to false when the pictures look was asked for
+  // Switch the theme. Resolves to false when the pictures theme was asked for
   // but there are no pictures.
-  async setLook(look) {
-    this.look = look;
-    const neon = look === 'neon';
-    this.theme.setEnabled(neon, this);
-    setDecorLook(neon ? 'neon' : 'white');
+  async setTheme(name) {
+    this.themeName = name;
+    // Switch the others off first (neon's switch-off restores the white
+    // room), then the chosen one on.
+    for (const [key, t] of Object.entries(this.themes)) if (key !== name) t.setEnabled(false, this);
+    this.themes[name]?.setEnabled(true, this);
+    setDecorTheme(name);
     this._applyTrackMaterial();
-    const shown = await this.trackTexture.setEnabled(look === 'pictures');
-    return look !== 'pictures' || shown > 0;
+    const shown = await this.trackTexture.setEnabled(name === 'pictures');
+    return name !== 'pictures' || shown > 0;
   }
 
-  // Course surfaces (not decoration) wear the neon material in the neon look.
+  // Course surfaces (not decoration) wear the theme's track material.
   _applyTrackMaterial() {
-    const mat = this.look === 'neon' ? this.theme.track : this.materials.surface;
+    const mat = this.themes[this.themeName]?.track ?? this.materials.surface;
     this.courseGroup?.traverse((o) => {
       if (o.isMesh && !o.userData.decor && !o.isInstancedMesh) o.material = mat;
     });
   }
 
   render(focus) {
-    this.theme.update(Math.min(this.clock.getDelta(), 0.1), this.camera);
+    const dt = Math.min(this.clock.getDelta(), 0.1);
+    for (const t of Object.values(this.themes)) t.update(dt, this.camera);
     this.sun.target.position.copy(focus);
     this.sun.position.copy(focus).add(this.sunOffset);
     this.renderer.render(this.scene, this.camera);
