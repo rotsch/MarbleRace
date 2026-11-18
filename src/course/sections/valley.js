@@ -14,9 +14,16 @@ import { buildTrack } from '../trackBuilder.js';
 // races of 8, 8 of 160 marbles fell back and were sent to the start; all made
 // it the second time. The crest is sensitive: climbLen 3.0 sent 13 of 96
 // back (2 skipped), 3.1 most of them, 2.9 none.
-// opts: { steep, drop, bottom, climb, climbLen, lead, brake, side, seconds }
+// opts: { steep, drop, bottom, climb, climbLen, rise, lead, brake, side, seconds }
+//  rise  crest height above the flat middle. When given, it sets the length of
+//        the straight climb (climbLen is ignored). The default track (climbLen
+//        2.95, climb 34°) has a rise of about 2.60; each 0.1 of climbLen is
+//        about 0.07 of rise. The lowest possible rise is what the bends into
+//        and over the climb gain on their own (about 0.6 at 34°); a smaller
+//        value is clamped to that, with a warning.
 export function build(ctx, entry, opts = {}) {
   const steep = deg(opts.steep ?? 48), climb = deg(opts.climb ?? 34);
+  const climbLen = opts.rise === undefined ? opts.climbLen ?? 2.95 : climbLenForRise(opts.rise, climb);
   // Brake first: two sharp unbanked bends (as in the S-bends). Fast marbles
   // lose speed bouncing off the outer walls, slow ones pass untouched, so
   // marbles reach the fall at much the same speed whatever came before.
@@ -31,9 +38,9 @@ export function build(ctx, entry, opts = {}) {
     { len: opts.drop ?? 1.4 },
     { len: 1.2, pitch: 0 }, // eases out
     { len: opts.bottom ?? 1.0 }, // flat middle
-    { len: 1.0, pitch: climb },
-    { len: opts.climbLen ?? 2.95 },
-    { len: 1.0, pitch: deg(-4) }, // over the crest
+    { len: CLIMB_IN, pitch: climb },
+    { len: climbLen },
+    { len: CREST_LEN, pitch: CREST_PITCH }, // over the crest
     { len: 0.8 },
   ]);
   const i0 = ctx.path.length;
@@ -60,4 +67,24 @@ export function build(ctx, entry, opts = {}) {
     seconds: opts.seconds ?? 6,
   });
   return lastFrame(frames);
+}
+
+const CLIMB_IN = 1.0; // bend from the flat middle into the climb
+const CREST_LEN = 1.0; // bend over the crest
+const CREST_PITCH = deg(-4);
+
+// Length of the straight climb that puts the crest `rise` above the flat
+// middle. The two bends gain the same height whatever the straight's length,
+// so trace them once with no straight between and make up the rest at `climb`.
+function climbLenForRise(rise, climb) {
+  const frames = tracePath({ pos: new Vector3(), yaw: 0, pitch: 0 }, [
+    { len: CLIMB_IN, pitch: climb },
+    { len: CREST_LEN, pitch: CREST_PITCH },
+  ]);
+  const minRise = Math.max(...frames.map((f) => f.pos.y));
+  if (rise < minRise) {
+    console.warn(`valley: rise ${rise} is below the minimum ${minRise.toFixed(2)} for climb ${(climb * 180 / Math.PI).toFixed(0)}°; using the minimum`);
+    return 0;
+  }
+  return (rise - minRise) / Math.tan(climb);
 }

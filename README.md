@@ -80,7 +80,9 @@ How "nothing gets stuck" is handled, section by section:
   `--layout valley` (160 marbles), 8 fell back and were sent to the top, and
   all of them made it the second time. The crest height (`climbLen` in
   `sections/valley.js`) is sensitive: 2.9 sends none back, 3.0 about one in
-  seven, 3.1 most.
+  seven, 3.1 most. It can also be set directly with `rise`, the crest's
+  height above the valley bottom (default about 2.60, positive only; each
+  0.1 of `climbLen` is about 0.07 of `rise`).
 - **Loop**: there is a short gap in the floor at the foot of the loop. Fast
   marbles fly across; slow ones, and any that roll back out of the loop, drop
   through into a channel underneath that rejoins after the loop.
