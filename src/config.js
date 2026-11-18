@@ -44,12 +44,13 @@ export const TRACK = {
   step: 0.06, // sampling distance along swept tracks
 };
 
-// Every surface uses TRACK, except the bouncy pad, which is rubber. All
-// contacts combine the two surfaces' values the same way (Rapier's default
-// average), so a marble behaves the same wherever it is; only what it touches
-// differs.
+// Every surface uses TRACK, except the bouncy pad, which is rubber. Contacts
+// combine the two surfaces' values the same way (Rapier's default average),
+// so a marble behaves the same wherever it is; only what it touches differs.
+// The one exception is the pad's bounce, which takes the larger of the two
+// (the pad's), so the pad is properly bouncy and not dulled by the marble.
 export const RUBBER = {
-  restitution: 0.85,
+  restitution: 0.9,
   friction: 0.8,
 };
 

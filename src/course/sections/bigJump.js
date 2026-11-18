@@ -28,7 +28,7 @@ export function build(ctx, entry, opts = {}) {
   const Fh = new Vector3(Math.sin(lip.yaw), 0, Math.cos(lip.yaw));
 
   // Funnel: rim just beyond the lip and below it.
-  const rRim = opts.rim ?? 2.0, rHole = 0.12, t = 0.05, tube = 0.08;
+  const rRim = opts.rim ?? 2.0, rHole = 0.22, t = 0.05, tube = 0.08;
   const center = lip.pos.clone().addScaledVector(Fh, rRim + t + 0.15);
   center.y = lip.pos.y - 0.45; // rim level
   const n = 18, s0 = Math.tan(0.3), s1 = Math.tan(0.95);
@@ -65,6 +65,7 @@ export function build(ctx, entry, opts = {}) {
   ctx.addPathPoint(new Vector3(center.x, center.y + yHole, center.z));
 
   // Closed pipe from the hole: down, a bend to almost level, a sideways turn.
+  // Wide enough (about three marbles across) that marbles can pass each other.
   const ri = rHole + 0.004, ro = ri + 0.03;
   const yaw = lip.yaw;
   const frames = [];

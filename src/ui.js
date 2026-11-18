@@ -8,6 +8,7 @@ const CAMERA_HINTS = {
   free: 'Free camera: click to steer with the mouse (Esc releases), WASD move, Q/E up/down, Shift faster.',
   pov: "Leader's view: riding on the leading marble.",
 };
+const SPEEDS = [0.1, 0.25, 0.5, 0.75, 1, 1.5, 2, 3, 4];
 const hex = (c) => `#${c.toString(16).padStart(6, '0')}`;
 
 export class UI {
@@ -19,7 +20,7 @@ export class UI {
     this.speed = $('speed');
     this.debug = $('debug');
     this.camera = $('camera');
-    this.texture = $('texture');
+    this.look = $('look');
     this.hint = $('hint');
     this.leader = $('leader');
     this.markers = $('progress-markers');
@@ -40,20 +41,73 @@ export class UI {
       e.stopPropagation();
       if (e.key === 'Enter') handlers.restart(this.seed.value.trim() || '1');
     });
-    this.speed.addEventListener('input', () => {
-      const v = Number(this.speed.value);
-      $('speed-value').textContent = `${v.toFixed(2)}x`;
-      handlers.speed(v);
+    this.speed.addEventListener('input', () => this.setSpeed(Number(this.speed.value), handlers));
+    this.pauseButton = $('pause');
+    this.pauseBadge = $('paused');
+    this.pauseButton.addEventListener('click', () => {
+      handlers.pause();
+      this.pauseButton.blur(); // so Space does not click it again
     });
     this.debug.addEventListener('change', () => handlers.debug(this.debug.checked));
+    this.wireframe = $('wireframe');
+    this.meshStats = $('mesh-stats');
+    this.wireframe.addEventListener('change', () => this.setWireframe(this.wireframe.checked, handlers));
+    this.shooting = $('shooting');
+    this.shooting.addEventListener('change', () => {
+      handlers.shooting(this.shooting.checked);
+      this.shooting.blur();
+    });
     this.camera.addEventListener('change', () => {
       this.setCamera(this.camera.value, handlers);
       this.camera.blur(); // so the game keys work again right away
     });
     this._buildPhysics(handlers);
-    this.texture.addEventListener('change', () => this.setTexture(this.texture.checked, handlers));
+    this.look.addEventListener('change', () => {
+      this.setLook(this.look.value, handlers);
+      this.look.blur();
+    });
     window.addEventListener('keydown', (e) => {
-      if (e.key === 'b' || e.key === 'B') {
+      const t = e.target;
+      const typing = t && (t.tagName === 'INPUT' || t.tagName === 'SELECT' || t.tagName === 'TEXTAREA');
+      if (e.code === 'Space' && !(typing && t.type === 'text')) {
+        e.preventDefault(); // no page scroll, no clicking a focused button
+        if (!e.repeat) handlers.pause();
+        return;
+      }
+      if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && !typing) {
+        e.preventDefault();
+        this.stepSpeed(e.key === 'ArrowRight' ? 1 : -1, handlers);
+        return;
+      }
+      // Track editor keys: G on / off; while on, 1 / 2 move / rotate, Del
+      // deletes, Ctrl+Z / Ctrl+Y undo / redo, Esc deselects. Keys that would
+      // change the camera or restart the race are off while editing.
+      if ((e.key === 'g' || e.key === 'G') && !typing) {
+        handlers.edit();
+        return;
+      }
+      if (handlers.editing() && !typing) {
+        const ed = handlers.editor;
+        if (e.key === '1') ed.setMode('translate');
+        else if (e.key === '2') ed.setMode('rotate');
+        else if (e.key === '3') ed.setMode('shape');
+        else if (e.key === 'Delete' || e.key === 'Backspace') this._try(() => ed.deletePiece());
+        else if (e.key === 'Escape') ed.select(null);
+        else if ((e.ctrlKey || e.metaKey) && (e.key === 'z' || e.key === 'Z')) {
+          e.preventDefault();
+          this._try(() => (e.shiftKey ? ed.redoStep() : ed.undoStep()));
+        } else if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || e.key === 'Y')) {
+          e.preventDefault();
+          this._try(() => ed.redoStep());
+        }
+        if (/^[cCfFrR]$/.test(e.key)) return;
+      }
+      if ((e.key === 'f' || e.key === 'F') && !typing) {
+        handlers.shoot();
+      } else if (e.key === 'm' || e.key === 'M') {
+        this.wireframe.checked = !this.wireframe.checked;
+        this.setWireframe(this.wireframe.checked, handlers);
+      } else if (e.key === 'b' || e.key === 'B') {
         this.debug.checked = !this.debug.checked;
         handlers.debug(this.debug.checked);
       } else if (e.key === 'c' || e.key === 'C') {
@@ -61,12 +115,22 @@ export class UI {
         const modes = [...this.camera.options].map((o) => o.value);
         this.setCamera(modes[(modes.indexOf(this.camera.value) + 1) % modes.length], handlers);
       } else if (e.key === 't' || e.key === 'T') {
-        this.texture.checked = !this.texture.checked;
-        this.setTexture(this.texture.checked, handlers);
+        // Cycle white -> neon dusk -> picture mosaic -> white.
+        const looks = [...this.look.options].filter((o) => !o.disabled).map((o) => o.value);
+        this.setLook(looks[(looks.indexOf(this.look.value) + 1) % looks.length], handlers);
       } else if (e.key === 'r' || e.key === 'R') {
         handlers.resetKey(this.seed.value.trim() || '1');
       }
     });
+  }
+
+  _try(fn) {
+    try {
+      fn();
+    } catch (err) {
+      console.error(err);
+      alert(err.message);
+    }
   }
 
   // One slider per tunable value. Values take effect on Apply (a restart).
@@ -109,11 +173,91 @@ export class UI {
     }
   }
 
-  async setTexture(on, handlers) {
-    const shown = await handlers.texture(on);
-    if (on && !shown) {
-      this.texture.checked = false;
+  // Speaker button (mute on/off, also N) and volume slider.
+  bindSound(sound) {
+    const box = $('sound');
+    const toggle = $('sound-toggle');
+    const slider = $('volume');
+    const show = () => {
+      const muted = sound.muted || sound.volume === 0;
+      box.classList.toggle('muted', muted);
+      box.classList.toggle('low', !muted && sound.volume < 0.4);
+      slider.value = String(sound.volume);
+      toggle.title = muted ? 'Sound off: click to turn on (N)' : 'Sound on: click to turn off (N)';
+    };
+    const flip = () => {
+      if (sound.volume === 0) sound.setVolume(0.6);
+      else sound.setMuted(!sound.muted);
+      show();
+      sound.click();
+    };
+    toggle.addEventListener('click', () => {
+      flip();
+      toggle.blur();
+    });
+    slider.addEventListener('input', () => {
+      sound.setVolume(Number(slider.value));
+      show();
+      sound.click(0.6 + Number(slider.value) * 0.8);
+    });
+    slider.addEventListener('change', () => slider.blur());
+    window.addEventListener('keydown', (e) => {
+      if ((e.key === 'n' || e.key === 'N') && e.target?.type !== 'text') flip();
+    });
+    // Plain buttons click audibly (Pause has its own sound).
+    document.addEventListener('click', (e) => {
+      const b = e.target.closest?.('button');
+      if (b && b.id !== 'pause' && b.id !== 'sound-toggle') sound.click();
+    });
+    show();
+  }
+
+  setSpeed(v, handlers) {
+    this.speed.value = String(v);
+    $('speed-value').textContent = `${v.toFixed(2)}x`;
+    handlers.speed(v);
+  }
+
+  // Arrow keys: next slower / faster preset speed. Going slower than the
+  // slowest speed pauses; while paused either arrow resumes, one step slower
+  // or faster than the speed it was paused at (or at that speed when there
+  // is nothing slower).
+  stepSpeed(dir, handlers) {
+    const v = Number(this.speed.value);
+    const next = dir > 0 ? SPEEDS.find((s) => s > v + 1e-6) : [...SPEEDS].reverse().find((s) => s < v - 1e-6);
+    if (handlers.isPaused()) {
+      if (next !== undefined) this.setSpeed(next, handlers);
+      handlers.setPaused(false);
+    } else if (next !== undefined) this.setSpeed(next, handlers);
+    else if (dir < 0) handlers.setPaused(true);
+  }
+
+  showPaused(paused) {
+    this.pauseBadge.hidden = !paused;
+    this.pauseButton.textContent = paused ? 'Resume' : 'Pause';
+  }
+
+  setWireframe(on, handlers) {
+    const s = handlers.wireframe(on);
+    this.showMeshStats(on ? s : null);
+  }
+
+  showMeshStats(s) {
+    this.meshStats.hidden = !s;
+    if (s) {
+      const k = (n) => (n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n));
+      this.meshStats.textContent = `${s.meshes} meshes · ${k(s.triangles)} triangles · ${k(s.vertices)} vertices. Blue: track, red: decoration.`;
+    }
+  }
+
+  async setLook(look, handlers) {
+    this.look.value = look;
+    const shown = await handlers.look(look);
+    if (!shown) {
+      // No pictures in textures/: take that look out of the cycle.
+      this.look.querySelector('option[value="pictures"]').disabled = true;
       this.hint.textContent = 'No track textures: add pictures to the textures/ folder.';
+      this.setLook('white', handlers);
     }
   }
 

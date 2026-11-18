@@ -7,7 +7,8 @@ import { TRACK } from '../../config.js';
 // Half-pipe: a wide U-shaped channel. Marbles enter at an angle to its axis,
 // swing from wall to wall while drifting downhill, and leave through a slot
 // in the end wall. Hitting that wall is where most of their speed goes.
-// opts: { side: 1 | -1 (which way the pipe axis turns away from the entry), radius, len, angle }
+// opts: { side: 1 | -1 (which way the pipe axis turns away from the entry), radius, len, angle,
+//        leadLen, leadPitch, leadTurn (+ = left): the short lead-in into the pipe }
 export function build(ctx, entry, opts = {}) {
   const side = opts.side ?? 1;
   const R = opts.radius ?? 1.1, len = opts.len ?? 7;
@@ -15,7 +16,7 @@ export function build(ctx, entry, opts = {}) {
   const pitch = opts.pitch ?? -deg(7);
 
   // Short lead-in that ends inside the pipe, a little above its floor.
-  const lead = tracePath(entry, [{ len: 1.0, pitch: -0.05 }]);
+  const lead = tracePath(entry, [{ len: opts.leadLen ?? 1.0, pitch: opts.leadPitch ?? -0.05, turn: opts.leadTurn ?? 0 }]);
   buildTrack(ctx, lead, { path: false });
   const end = lastFrame(lead);
 

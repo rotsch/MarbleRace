@@ -42,7 +42,7 @@ export function rejoin(ctx, { main, low, len, lowPitch = 0.05, mainSide }) {
 
   const lowLen = pathLength(lowSegs), mainLen = pathLength(mainSegs);
   const yMerge = low.pos.y - Math.tan(lowPitch) * lowLen;
-  const mainPitch = Math.atan((main.pos.y - yMerge) / mainLen);
+  let mainPitch = Math.atan((main.pos.y - yMerge) / mainLen);
 
   const lowWide = low.wideLen ?? 0;
   const lowFrames = tracePath({ pos: low.pos, yaw, pitch: -lowPitch }, lowSegs);
@@ -51,7 +51,22 @@ export function rejoin(ctx, { main, low, len, lowPitch = 0.05, mainSide }) {
     rail: typeof low.rail === 'function' ? low.rail : (d) => (d < lowWide + 0.6 ? low.rail ?? 0.3 : 0.3),
     path: false,
   });
-  const mainFrames = tracePath({ pos: main.pos, yaw, pitch: -mainPitch }, mainSegs);
+  let mainFrames;
+  if (main.pitch0 === undefined) {
+    mainFrames = tracePath({ pos: main.pos, yaw, pitch: -mainPitch }, mainSegs);
+  } else {
+    // The main track starts at main.pitch0 (level after the loop, say) and
+    // eases into its slope over its first segment. That drops less early on,
+    // so find the slope that still meets the low path at the merge height.
+    const trace = (p) => tracePath({ pos: main.pos, yaw, pitch: main.pitch0 }, mainSegs.map((s, i) => (i === 0 ? { ...s, pitch: -p } : s)));
+    const lead = mainSegs[0].len / 2; // roughly how much horizontal run the easing costs
+    for (let k = 0; k < 8; k++) {
+      mainFrames = trace(mainPitch);
+      const err = lastFrame(mainFrames).pos.y - yMerge; // > 0: still too high
+      if (Math.abs(err) < 1e-5) break;
+      mainPitch = Math.atan(Math.tan(mainPitch) + err / Math.max(0.5, mainLen - lead));
+    }
+  }
   buildTrack(ctx, mainFrames, {
     width: widthStops([[0, main.width ?? TRACK.width], [main.wideLen ?? 0, main.width ?? TRACK.width], [(main.wideLen ?? 0) + 1.2, TRACK.width]]),
     rail: typeof main.rail === 'function' ? main.rail : main.rail ?? 0.3,

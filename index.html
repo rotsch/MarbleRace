@@ -11,15 +11,75 @@
     <div id="ui">
       <div id="start-overlay" hidden><button id="start-race">Start race</button></div>
       <div id="countdown" hidden></div>
+      <div id="crosshair" hidden></div>
+      <div id="paused" hidden>❚❚ Paused <span>Space to resume</span></div>
       <section id="progress" class="panel">
         <div id="leader"><span class="label">Leading</span> <span class="dot"></span> <span class="name">–</span></div>
         <div id="progress-line"><div id="progress-markers"></div></div>
         <div class="ends"><span>Start</span><span>Finish</span></div>
       </section>
+      <section id="sound" class="panel">
+        <button id="sound-toggle" title="Sound on / off (N)" aria-label="Sound on / off">
+          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+            <path d="M3 9h4l5-4v14l-5-4H3z" fill="currentColor" />
+            <path class="wave1" d="M15.5 9.5a3.5 3.5 0 0 1 0 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+            <path class="wave2" d="M18 7a7 7 0 0 1 0 10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+            <path class="mute" d="M16 9.5l5 5m0-5l-5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+          </svg>
+        </button>
+        <input id="volume" type="range" min="0" max="1" step="0.01" aria-label="Volume" title="Volume" />
+      </section>
       <section id="ranking" class="panel">
         <h2 id="ranking-title">Ranking</h2>
         <ol id="ranking-list"></ol>
         <div id="clock">0.00 s</div>
+      </section>
+      <section id="editor" class="panel" hidden>
+        <h2>Track editor</h2>
+        <div class="row">
+          <button id="ed-move" class="tool" title="Move the selected piece (1)">Move (1)</button>
+          <button id="ed-rotate" class="tool" title="Turn the selected piece (2)">Rotate (2)</button>
+          <button id="ed-shape" class="tool" title="Widen the track and raise or lower its walls (3)">Shape (3)</button>
+        </div>
+        <select id="ed-pieces" size="8" aria-label="Pieces"></select>
+        <div id="ed-piece" hidden>
+          <label>Name <input id="ed-name" type="text" spellcheck="false" /></label>
+          <p id="ed-type-label"></p>
+          <div id="ed-fields"></div>
+          <div id="ed-shape-box">
+            <p class="sub">Shape <span id="ed-shape-length"></span></p>
+            <table id="ed-stops">
+              <thead><tr><th title="Distance from the start of the piece">At</th><th title="Added to the track width">Width</th><th title="Added to the left wall's height">Left</th><th title="Added to the right wall's height">Right</th><th></th></tr></thead>
+              <tbody></tbody>
+            </table>
+            <button id="ed-add-stop" title="Add a shape stop, then drag its wall handles (Shape mode) or type values">Add shape stop</button>
+          </div>
+          <div id="ed-connect" hidden>
+            <p class="sub">Connect</p>
+            <div id="ed-connect-list"></div>
+          </div>
+          <div class="row">
+            <button id="ed-detach" title="Unlink from the piece before it, keeping it where it is">Detach</button>
+            <button id="ed-delete" title="Delete the selected piece (Del)">Delete</button>
+          </div>
+        </div>
+        <div class="row">
+          <select id="ed-type" aria-label="Piece type"></select>
+          <button id="ed-add" title="Add after the selected piece, or in front of the camera">Add</button>
+        </div>
+        <div class="row">
+          <button id="ed-undo" title="Undo (Ctrl+Z)">Undo</button>
+          <button id="ed-redo" title="Redo (Ctrl+Y)">Redo</button>
+        </div>
+        <div class="row">
+          <button id="ed-export" title="Save the course as a JSON file">Export</button>
+          <button id="ed-import" title="Load a course JSON file">Import</button>
+          <input id="ed-file" type="file" accept=".json,application/json" hidden />
+        </div>
+        <button id="ed-reset" title="Throw away all edits">Reset course</button>
+        <ul id="ed-problems"></ul>
+        <p class="note">Click a piece to select it, then drag the arrows (or the ring) to move it. Sockets: <b class="in">green</b> in, <b class="out">orange</b> out; drop one near another to snap them together. Alt-drag moves only the piece, not the ones after it. Hold the right mouse button to look, WASD / Q E to fly.</p>
+        <button id="ed-test" class="primary" title="Leave the editor and race on this course (G)">Test race</button>
       </section>
       <section id="controls" class="panel">
         <label>Seed <input id="seed" type="text" spellcheck="false" /></label>
@@ -27,10 +87,17 @@
           <button id="restart">Restart</button>
           <button id="random" title="New random seed">New seed</button>
         </div>
-        <label>Speed <span id="speed-value">1.00x</span>
-          <input id="speed" type="range" min="0.25" max="2" step="0.05" value="1" />
+        <label>Speed (← →, Space pauses) <span id="speed-value">1.00x</span>
+          <input id="speed" type="range" min="0.1" max="4" step="0.05" value="1" />
         </label>
-        <label class="check"><input id="debug" type="checkbox" /> Physics debug (B)</label>
+        <button id="pause" title="Pause or resume the simulation (Space)">Pause</button>
+        <fieldset id="debug-options">
+          <legend>Debug</legend>
+          <label class="check"><input id="debug" type="checkbox" /> Physics colliders (B)</label>
+          <label class="check"><input id="wireframe" type="checkbox" /> Mesh wireframe (M)</label>
+          <p id="mesh-stats" hidden></p>
+          <label class="check" title="Click the scene or press F to shoot a marble from the camera"><input id="shooting" type="checkbox" /> Shoot marbles (click / F)</label>
+        </fieldset>
         <label>Camera (C)
           <select id="camera">
             <option value="follow">Follow leader</option>
@@ -38,8 +105,15 @@
             <option value="pov">Leader's view</option>
           </select>
         </label>
-        <label class="check"><input id="texture" type="checkbox" /> Track texture (T)</label>
+        <label>Look (T)
+          <select id="look">
+            <option value="white">White</option>
+            <option value="neon">Neon dusk</option>
+            <option value="pictures">Picture mosaic</option>
+          </select>
+        </label>
         <p id="hint">Follow camera tracks the leader.</p>
+        <button id="edit-track" title="Move, rotate, add and delete track pieces (G)">Edit track (G)</button>
         <details id="physics">
           <summary>Physics</summary>
           <div id="tunables"></div>

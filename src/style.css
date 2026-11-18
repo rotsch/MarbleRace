@@ -59,6 +59,65 @@ button:hover { background: #111; color: #fff; }
   text-shadow: 0 0 18px #fff, 0 0 4px #fff; font-variant-numeric: tabular-nums;
 }
 #countdown.pop { animation: pop 0.35s ease-out; }
+#paused {
+  position: absolute; left: 50%; bottom: 28px; transform: translateX(-50%);
+  padding: 8px 16px; border: 1px solid #111; background: rgba(255, 255, 255, 0.92);
+  font-size: 16px; font-weight: 700; letter-spacing: 0.06em;
+}
+#paused span { margin-left: 8px; font-size: 11px; font-weight: 400; color: #666; letter-spacing: 0; }
+#paused[hidden], #mesh-stats[hidden], #crosshair[hidden] { display: none; }
+/* Sound: speaker button (mute) and volume slider, bottom left. */
+#sound { top: auto; bottom: 14px; left: 14px; display: flex; align-items: center; gap: 8px; padding: 6px 10px 6px 6px; }
+#sound-toggle { flex: none; display: flex; padding: 4px; border: none; background: none; color: #111; }
+#sound-toggle:hover { background: #eee; color: #111; }
+#sound #volume { width: 96px; }
+#sound .mute { display: none; }
+#sound.muted .mute { display: inline; }
+#sound.muted .wave1, #sound.muted .wave2, #sound.low .wave2 { display: none; }
+#sound.muted #volume { opacity: 0.4; }
+#crosshair {
+  position: absolute; left: 50%; top: 50%; width: 18px; height: 18px; margin: -9px 0 0 -9px;
+  background: linear-gradient(#111, #111) center / 2px 100% no-repeat, linear-gradient(#111, #111) center / 100% 2px no-repeat;
+  opacity: 0.6;
+}
+#debug-options { margin: 0; padding: 4px 8px 6px; border: 1px solid #ccc; display: flex; flex-direction: column; gap: 4px; }
+#debug-options legend { padding: 0 4px; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 600; }
+#mesh-stats { margin: 0; color: #666; font-size: 11px; font-variant-numeric: tabular-nums; }
+/* Track editor panel, on the left in place of the ranking. */
+#editor[hidden], #ed-piece[hidden] { display: none; }
+#editor { left: 14px; width: 260px; display: flex; flex-direction: column; gap: 7px; max-height: calc(100vh - 28px); overflow-y: auto; box-sizing: border-box; }
+body.editing #ranking, body.editing #progress { display: none; }
+#editor select { font: inherit; border: 1px solid #111; background: #fff; min-width: 0; }
+#editor > * { flex: none; }
+#ed-pieces { width: 100%; }
+#ed-type { flex: 1; }
+#ed-piece { display: flex; flex-direction: column; gap: 6px; border: 1px solid #ccc; padding: 6px 8px; }
+#ed-type-label { margin: 0; color: #666; font-size: 11px; }
+#ed-fields { display: flex; flex-direction: column; gap: 5px; }
+#ed-fields label { flex-direction: row; align-items: center; justify-content: space-between; gap: 6px; }
+#ed-fields input { width: 76px; font: inherit; padding: 2px 4px; border: 1px solid #111; }
+#ed-fields .unit { color: #666; font-size: 11px; width: 22px; }
+#editor button.tool.on { background: #111; color: #fff; }
+#editor button.primary { font-weight: 600; border-width: 2px; }
+#ed-connect[hidden], #ed-shape-box[hidden] { display: none; }
+#ed-shape-box .sub, #ed-connect .sub { margin: 0 0 4px; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 600; }
+#ed-shape-length { font-weight: 400; letter-spacing: 0; text-transform: none; color: #666; }
+#ed-stops { width: 100%; border-collapse: collapse; margin-bottom: 4px; font-size: 11px; }
+#ed-stops th { font-weight: 600; text-align: left; color: #444; padding: 0 2px; }
+#ed-stops td { padding: 1px 2px; }
+#ed-stops td:first-child { width: 30%; }
+#ed-stops input { width: 100%; box-sizing: border-box; font: inherit; padding: 1px 3px; border: 1px solid #111; }
+#ed-stops tr.on td { background: #fef3c7; }
+#ed-stops button { padding: 0 5px; flex: none; }
+#ed-stops tbody tr { cursor: pointer; }
+#ed-connect .sub { margin: 0 0 4px; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 600; }
+#ed-connect-list { display: flex; flex-direction: column; gap: 4px; }
+#ed-connect-list button { text-align: left; font-size: 12px; }
+#ed-problems { margin: 0; padding: 0; list-style: none; color: #b91c1c; font-size: 11px; }
+#ed-problems:empty { display: none; }
+#editor .note { margin: 0; color: #666; font-size: 11px; }
+#editor .note .in { color: #16a34a; }
+#editor .note .out { color: #f97316; }
 @keyframes pop { from { transform: translate(-50%, -50%) scale(1.5); opacity: 0.3; } }
 @media (max-width: 900px) {
   #progress { left: 14px; right: 14px; width: auto; transform: none; }

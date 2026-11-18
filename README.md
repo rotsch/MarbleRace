@@ -28,64 +28,122 @@ Node 18 or newer.
 | Seed field + Restart (or Enter in the field) | replay a race; the same seed gives exactly the same race |
 | `R` | back to the start line and wait; `R` again starts the race (with the countdown) |
 | New seed | restart with a random seed |
-| Speed slider | simulation speed 0.25x to 2x |
-| `B` or checkbox | physics debug view (draws every collider) |
+| Speed slider, `←` / `→` | simulation speed 0.1x to 4x; the arrow keys step through 0.1, 0.25, 0.5, 0.75, 1, 1.5, 2, 3, 4; `←` at 0.1x pauses, and while paused either arrow resumes one step slower / faster than before |
+| `Space` or Pause button | pause / resume: physics, race clock and countdown stop, the camera still moves |
+| `B` or checkbox | debug: physics colliders (draws every collider) |
+| `M` or checkbox | debug: mesh wireframe, every triangle of the course meshes (track blue, decoration red), with mesh / triangle / vertex counts |
+| `F`, click, or checkbox | debug: shoot marbles from the camera (click aims at the cursor, at the screen centre while the mouse steers the free camera; `F` aims at the last cursor position). Shot marbles are white, black, grey or brown, are not ranked or rescued, fly only while the race runs, and vanish on the room floor or at the finish line |
 | `C` or Camera menu | cycle the camera: follow the leader → free fly → leader's view (rides on the leading marble, looking along the track a little ahead; it switches marbles once a new leader is 2.5 cm ahead) |
-| click scene | enter free camera and steer with the mouse (pointer lock, `Esc` releases) |
+| click scene | enter free camera and steer with the mouse (pointer lock, `Esc` releases); holding the right mouse button also steers it |
 | `W` `A` `S` `D` | fly forward / left / back / right (enters free camera) |
 | `Q` / `E` | fly up / down |
 | `Shift` | fly faster |
-| `T` or checkbox | track texture on/off: a random mosaic of every picture in `textures/` (starts off; stays white if the folder has no pictures) |
+| Speaker button / volume slider (bottom left), `N` | sound on / off and volume (remembered by the browser). All sounds are synthesised with Web Audio: rolling (louder and brighter with speed, silent in the air), hits on the track, glass clicks between marbles, boings on the rubber pads, start-light beeps, a bell per finisher with a cheering crowd and a fanfare for the winner, a crowd of babbling voices at the finish (it wakes as the leader nears the line and falls silent once the last marble is home), safety-net nudges and rescues, shots, clicks and pause. World sounds come from where they happen, heard from the camera |
+| `T` or Look menu | cycle the look: White (default) → Neon dusk (evening sky with a striped sun and stars, an endless glowing grid floor with light pulses, a rainbow track whose colour follows height, candy-striped floors, neon gantries and stands, low-poly shapes drifting around the course) → Picture mosaic (every picture in `textures/` as a random mosaic; skipped if the folder has none) |
 | Start race (button) | the page opens with the marbles waiting on the start line; every start (this button, a second `R`, Restart, New seed, physics Apply) counts down 3, 2, 1 first |
 | Progress line (top) | every marble at its distance along the course; marbles further ahead are drawn over those behind; shows the leader (the winner once someone finishes) |
+| `G` or Edit track | track editor (see below): the race waits on the start line; click a piece to select it, drag the gizmo to move it (`1`) or turn it (`2`), snap sockets together, change its options, add / delete pieces, `Ctrl+Z` / `Ctrl+Y` undo / redo, `Del` deletes, `Esc` deselects; `3` shape (widen, raise / lower walls); Test race leaves the editor and starts a race on the edited course |
 | Physics panel | marble size, bounciness, grip and rolling resistance; track bounciness and grip; rubber pad bounciness. Apply restarts the race; values are remembered in this browser |
 
 URL parameters: `?seed=42` picks the starting seed; `?layout=loop` loads one
 section on its own (`pegField`, `funnel`, `loop`, `halfPipe`, `splitter`,
 `dropCatch`, `bumpyRoad`, `spiral`, `bouncyPads`, `bottleneck`, `winding`,
-`valley`, `bigJump`).
+`valley`, `bigJump`); `?course=default` ignores the course saved by the editor.
+
+## Track editor
+
+`G` opens the editor. The course is data: placed pieces and the links
+between their **sockets** (`src/course/pieces.js`). Each piece has inputs and
+outputs, drawn on the track floor on the centre line, with an arrow in the
+direction marbles travel: **green** inputs, **orange** outputs, a pin on each
+open one; linked sockets shrink to a grey dot, and a linked input that no
+longer lines up turns **red**.
+
+- Drag a piece by its gizmo (it sits on the piece's input). The pieces linked
+  after it come along; **Alt-drag** moves only the piece and leaves the rest
+  where it is. Moving unlinks the piece from the one before it.
+- Drop a socket within 0.3 units of an open socket of the opposite kind and it
+  **snaps**: position and heading line up and the two are linked. A linked
+  piece starts exactly where the output before it ends, slope included.
+- Rotate turns the piece about its input, in 15° steps (moves snap to 0.1).
+- **Shape** (`3`): widen the track and raise or lower its walls along a
+  piece. A piece gets *shape stops* (Add shape stop); each stop sits at a
+  distance along the piece and adds to the piece's own design: **Width**
+  (both walls move apart equally), **Left** / **Right** (that wall's height;
+  taking a wall down to 0 leaves that side open, so marbles can roll off).
+  Between stops the track eases smoothly; before the first stop and after
+  the last it eases back to normal over 0.5 units. Every stop has a purple
+  handle on top of each wall: click one, then drag its arrows up / down for
+  that wall's height, sideways for the width, along the track to move the
+  stop. The panel's table shows the same values (in course units; the track
+  is 0.6 wide, walls 0.26 high) for typing. It shapes the piece's main
+  route only (not funnel bowls, the loop ring, pipes or side routes), and the
+  problems list warns when a change reaches a piece's start or end, where it
+  no longer matches the piece next to it.
+- **Connect** buttons (in the panel, under the selected piece's options) list
+  every open socket of the selected piece paired with each open socket of the
+  opposite kind on another piece, nearest first. A click moves and turns the
+  selected piece (with the pieces linked after it) so the two sockets meet,
+  and links them. The same pair is offered from either piece; the one that
+  is selected is the one that moves.
+- The panel lists every piece, edits the selected piece's options (blank =
+  the piece's default), adds a piece after the selected one (inserted into the
+  chain) or in front of the camera, detaches or deletes it, and lists problems
+  (open outputs, inputs out of line).
+- **Fork** has two outputs and **Merge** two inputs, for routes that split and
+  meet again. Race progress follows the links, so marbles are ranked and
+  rescued correctly on either route.
+- Every edit rebuilds the course (about 60 ms) and is saved in this browser.
+  Export / Import save and load the course as JSON;
+  `npm run sim -- --course marble-course.json` races an exported course headless.
+  Reset course goes back to the original.
 
 ## The course
 
 Top to bottom, linked by sloped, curving track:
 
-1. **Start ramp**: 8 seeded spawn slots.
+1. **Start ramp**: 8 seeded spawn slots on a painted grid, under a gantry whose five lights count down and turn green on "Go!".
 2. **Peg field**: tilted Plinko board of cylinders.
 3. **Funnel**: marbles enter tangentially, circle, drop through the centre hole.
 4. **Loop-the-loop** after a steep drop, with a bypass (see below).
-5. **Half-pipe**: marbles enter at an angle, swing wall to wall, leave through a slot.
+5. **Half-pipe**: marbles enter at an angle, swing wall to wall, leave through a slot. The lead-in's length, slope and turn and the entry angle are options.
 6. **Splitter**: a wedge sends marbles down a short path or a long detour; they merge again.
 7. **Winding 1**: a long run of gentle banked bends, left and right.
-8. **Valley**: a sharp double bend as a brake, a steep fall that eases out into a flat middle, then a long climb to a crest a little lower than the top (see below).
+8. **Valley**: a straight lead-in, a steep fall that eases out into a flat middle, then a long climb to a crest a little lower than the top (see below). Drop slope, climb slope and middle length are options.
 9. **Drop and catch**: a jump across a gap; short jumps land in a slower recovery path that rejoins.
 10. **Bumpy road**: washboard of speed bumps.
-11. **Spiral**: 2.75-turn banked corkscrew.
+11. **Spiral**: 2.75-turn banked corkscrew. Steepness is an option, and **Tunnel** closes it over with a see-through roof (its walls and roof fit under the turn above, so a shallow spiral gets a lower tunnel).
 12. **Bouncy pads**: a tilted rubber pad throws marbles up onto a higher track; misses take a lower path.
 13. **Big jump**: a long steep run that widens, a short upward kicker, and a big funnel that catches the marbles in the air. The funnel drains into a closed pipe that goes straight down, bends level, turns sideways and comes out on ordinary track.
 14. **Winding 2**: another long run of banked bends.
-15. **Bottleneck**: narrows to a single-marble throat.
-16. **Finish**: sensor collider, then a walled basin.
+15. **Bottleneck**: narrows to a single-marble throat; the throat width is an option.
+16. **Finish**: chequered line and finish gantry over the sensor, red and white kerbs, grandstands of spectator marbles either side, then a walled basin. Start and finish dressing is decoration only (no colliders, skipped headless), so it changes no race result.
 
 S-bends (two sharp unbanked corners) sit between the fast sections and act
 as brakes.
 
 How "nothing gets stuck" is handled, section by section:
 
-- **Valley**: a marble alone always makes the crest (at about 4 units/s,
-  whatever speed it came in with, because the brake bends at the top even
-  that out). In a pack, marbles that lose speed in collisions can fall back
-  and roll to and fro in the middle. A marble that is still in the valley
-  after 6 s goes back to the top of the fall, at rest; if that happens to it
-  a second time, it is put just past the crest. In 20 races on
-  `--layout valley` (160 marbles), 8 fell back and were sent to the top, and
-  all of them made it the second time. The crest height (`climbLen` in
-  `sections/valley.js`) is sensitive: 2.9 sends none back, 3.0 about one in
-  seven, 3.1 most. It can also be set directly with `rise`, the crest's
-  height above the valley bottom (default about 2.60, positive only; each
-  0.1 of `climbLen` is about 0.07 of `rise`).
+- **Valley**: the crest always sits the same height below the top of the
+  fall (the height measured to work with the original slopes); the climb's
+  length is worked out from the slopes and the middle length to keep it
+  there. In a pack, marbles that lose speed in collisions can fall back and
+  roll to and fro in the middle. A marble that is still in the valley after
+  6 s goes back to the start of the lead-in; if that happens to it a second
+  time, it is put just past the crest. The crest height is sensitive (with
+  the original slopes, a climb of 3.0 instead of 2.95 sent one marble in
+  seven back), and extreme settings can make it unreachable: a 62° drop
+  with a 26° climb and a 2.5 long middle sent every marble back twice.
+  The crest can instead be set as a height above the valley bottom with
+  `rise` (positive only; about 2.60 with the original slopes, and the
+  editor's "Crest rise" field). Each 0.1 of climb length is about 0.07 of
+  rise, so small changes matter.
 - **Loop**: there is a short gap in the floor at the foot of the loop. Fast
   marbles fly across; slow ones, and any that roll back out of the loop, drop
-  through into a channel underneath that rejoins after the loop.
+  through into a channel underneath that rejoins after the loop. The channel
+  sits 0.55 below the foot (`bypassDepth`), so the track coming down from
+  the loop clears its walls by at least 13 cm; that track starts level, like
+  the end of the loop, and eases into its slope.
 - **Drop and catch / bouncy pads**: a wide catch floor with tall walls under
   the jump feeds a gentler path that merges back in.
 - **Peg field**: every gap (peg to peg, peg to wall) is wider than two
@@ -118,9 +176,12 @@ src/
   render.js            renderer, boundless white space, lights, marble shadows, marble meshes, debug lines
   camera.js            follow camera, free fly camera, leader's view
   ui.js                overlay
+  editor.js            track editor: selection, gizmo, socket markers, snapping, undo, save
+  editorPanel.js       the editor's panel
   main.js              wires it together, main loop
   course/
-    course.js          THE LAYOUT: the ordered list of sections
+    pieces.js          THE LAYOUT as data: piece types, the default course, building from data
+    course.js          builds a layout name or course data
     frame.js           poses and turtle-style path tracing (length / turn / pitch / bank)
     trackBuilder.js    sweeps a railed U channel along a path
     geometry.js        sweep and lathe mesh helpers
@@ -131,8 +192,11 @@ scripts/
   physics-check.mjs    single-marble physics checks
 ```
 
-Each section exports `build(ctx, entryPose, opts)` and returns its exit pose,
-so the course is a chain: reorder or retune sections in `course/course.js`.
+Each section exports `build(ctx, entryPose, opts)` and returns its exit pose
+(or `{ exits: [...] }` for several outputs; extra inputs come from
+`ctx.addSocket('in', frame)`). The default course in `course/pieces.js` is a
+chain of pieces, each linked to the one before it: reorder or retune it there,
+or in the editor.
 
 ## Track textures
 
@@ -206,7 +270,8 @@ incident, audits that a single marble never gains energy, and checks that
 running the same seed twice gives identical results.
 
 `npm run sim -- --layout bottleneck --seeds 150` stress-tests one section with
-all 8 marbles arriving together.
+all 8 marbles arriving together. `npm run sim -- --course file.json` races a
+course exported from the editor.
 
 ### Last measured results
 

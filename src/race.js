@@ -1,14 +1,19 @@
-import { PHYSICS, RACE, MARBLE } from './config.js';
+import { PHYSICS, RACE, MARBLE, RUBBER } from './config.js';
 import { createRng } from './rng.js';
 import { createWorld, addRoomFloor } from './physics.js';
 import { CourseContext } from './course/context.js';
 import { buildCourse } from './course/course.js';
 import { createMarbles, snapshot } from './marbles.js';
 
+const MAX_SHOTS = 80; // the oldest shot marble goes when another is fired
+// Smallest velocity change in one step that counts as a hit (units/s). Rolling
+// through the tightest bends at top speed changes velocity by about 1 per step.
+const IMPACT_MIN = 1.4;
+
 // One race: world + course + marbles + ranking. No DOM or rendering in here,
 // so it also runs headless (scripts/sim.mjs).
 export class Race {
-  constructor(RAPIER, seed, materials = null, layout = 'full') {
+  constructor(RAPIER, seed, materials = null, layout = 'full') { // layout: name or course data
     this.RAPIER = RAPIER;
     this.seed = seed;
     this.world = createWorld(RAPIER);
@@ -24,6 +29,47 @@ export class Race {
     this.results = [];
     this.counters = {}; // sensor name -> set of marble indices that crossed it
     this.log = []; // { time, marble, type: 'nudge' | 'rescue', section }
+    // Debug: marbles shot from the camera. Collider handle -> { body, color }.
+    // They are not ranked, timed or rescued, and disappear on the room floor
+    // or at the finish line.
+    this.shots = new Map();
+    this.impacts = null; // set to [] to collect hits for sound (see _impact)
+  }
+
+  // Shoot a marble from `pos` along the unit vector `dir` at `speed`.
+  shoot(pos, dir, speed, color) {
+    const R = this.RAPIER;
+    if (this.shots.size >= MAX_SHOTS) this._removeShot(this.shots.values().next().value);
+    const body = this.world.createRigidBody(
+      R.RigidBodyDesc.dynamic()
+        .setTranslation(pos.x, pos.y, pos.z)
+        .setLinvel(dir.x * speed, dir.y * speed, dir.z * speed)
+        .setLinearDamping(MARBLE.linearDamping)
+        .setAngularDamping(MARBLE.angularDamping)
+        .setCanSleep(false)
+    );
+    const collider = this.world.createCollider(
+      R.ColliderDesc.ball(MARBLE.radius).setDensity(MARBLE.density)
+        .setRestitution(MARBLE.restitution).setFriction(MARBLE.friction),
+      body
+    );
+    const shot = { body, collider, color, gone: false };
+    this.shots.set(collider.handle, shot);
+    return shot;
+  }
+
+  _removeShot(shot) {
+    this.shots.delete(shot.collider.handle);
+    this.world.removeRigidBody(shot.body);
+    shot.removed = true;
+  }
+
+  _updateShots() {
+    for (const shot of [...this.shots.values()]) {
+      const t = shot.body.translation();
+      // Resting on (or below) the room floor, or far out of the room.
+      if (shot.gone || t.y < MARBLE.radius * 1.5 || Math.abs(t.x) > 200 || Math.abs(t.z) > 200) this._removeShot(shot);
+    }
   }
 
   get finished() {
@@ -38,6 +84,11 @@ export class Race {
       if (!started) return;
       const sensors = this.course.sensors;
       const name = sensors.get(h1) ?? sensors.get(h2);
+      const shot = this.shots.get(h1) ?? this.shots.get(h2);
+      if (shot) {
+        if (name === 'finish') shot.gone = true;
+        return;
+      }
       const m = this.byHandle.get(h1) ?? this.byHandle.get(h2);
       if (!name || !m) return;
       if (name === 'finish') {
@@ -51,10 +102,16 @@ export class Race {
         seen.add(m.index);
       }
     });
+    if (this.shots.size) this._updateShots();
+    if (this.impacts) {
+      for (const m of this.marbles) this._impact(m, m.index);
+      for (const s of this.shots.values()) this._impact(s, `shot${s.collider.handle}`);
+    }
     for (const m of this.marbles) {
       snapshot(m);
       this._track(m);
-      if (!m.finished) this._touch(m);
+      // Finished marbles only need contact for the rolling sound.
+      if (!m.finished || this.impacts) this._touch(m);
       if (!m.finished) this._watchdog(m, this._zones(m));
     }
   }
@@ -72,6 +129,13 @@ export class Race {
     for (let i = lo; i <= hi; i++) {
       const d = d2(i);
       if (d < bestD) { bestD = d; best = i; }
+    }
+    // Routes recorded elsewhere in the array (after a fork, into a merge).
+    for (const [a, b] of this.course.searchRanges(m.pathIndex, 30, 90)) {
+      for (let i = a; i <= b; i++) {
+        const d = d2(i);
+        if (d < bestD) { bestD = d; best = i; }
+      }
     }
     if (bestD > 9 && this.steps % 30 === 0) {
       for (let i = 0; i < path.length; i += 2) {
@@ -95,7 +159,39 @@ export class Race {
         for (let k = 0; k < manifold.numContacts(); k++) if (manifold.contactDist(k) < 0.01) touching = true;
       });
     });
-    if (touching) m.lastTouch = m.pathIndex;
+    m.touching = touching;
+    if (touching && !m.finished) m.lastTouch = m.pathIndex;
+  }
+
+  // For sound: a sudden change of velocity in one step (beyond what gravity
+  // does) is a hit. Records { key, pos, strength, kind } in this.impacts,
+  // kind being what it hit: 'marble', 'pad' (rubber) or 'track'. Leaves
+  // the simulation untouched.
+  _impact(obj, key) {
+    const v = obj.body.linvel();
+    const last = obj.lastVel;
+    obj.lastVel = { x: v.x, y: v.y, z: v.z };
+    if (!last) return;
+    const dt = PHYSICS.timestep;
+    const d = { x: v.x - last.x, y: v.y - last.y - PHYSICS.gravity * dt, z: v.z - last.z };
+    const dv = Math.hypot(d.x, d.y, d.z);
+    // Below: rolling through bends; above: a teleport by the safety net.
+    if (dv < IMPACT_MIN || dv > 60) return;
+    const t = obj.body.translation();
+    let kind = 'track';
+    this.world.contactPairsWith(obj.collider, (other) => {
+      if (kind === 'marble') return;
+      const body = other.parent();
+      if (body?.isDynamic()) {
+        // A marble touching this one, and the kick came from its side (in a
+        // pack, marbles touch all the time while the hit was the track).
+        const o = body.translation();
+        const n = { x: t.x - o.x, y: t.y - o.y, z: t.z - o.z };
+        const dist = Math.hypot(n.x, n.y, n.z);
+        if (dist < MARBLE.radius * 2 + 0.01 && (n.x * d.x + n.y * d.y + n.z * d.z) / (dist * dv) > 0.7) kind = 'marble';
+      } else if (other.restitution() >= RUBBER.restitution - 1e-6) kind = 'pad';
+    });
+    if (this.impacts.length < 200) this.impacts.push({ key, pos: { x: t.x, y: t.y, z: t.z }, strength: dv, kind });
   }
 
   // Zones (the valley): a marble that stays in one too long goes back to its
@@ -153,12 +249,19 @@ export class Race {
   //  stuck: a little ahead of where it is, past whatever holds it.
   _rescue(m, why) {
     const path = this.course.path;
-    const cap = this.course.finishIndex - 8; // never drop a marble past the finish line
+    const course = this.course;
+    const capS = path[course.finishIndex - 8].s; // never drop a marble past the finish line
     const safe = (i) => path[i].solid && path[i].up.y > 0.6; // up to ~53 deg slope
+    // Walk along the course (following links between pieces) to the first
+    // safe point at least `dist` further on, stopping short of the finish.
     const ahead = (from, dist) => {
       let i = from;
-      while (i < cap && (path[i].s < path[from].s + dist || !safe(i))) i++;
-      return Math.min(i, cap);
+      for (let n = 0; n < path.length && path[i].s < capS && (path[i].s < path[from].s + dist || !safe(i)); n++) {
+        const j = course.nextIndex(i);
+        if (j === i) break;
+        i = j;
+      }
+      return path[i].s < capS ? i : course.finishIndex - 8;
     };
     let i;
     if (why === 'fell') {
@@ -167,7 +270,9 @@ export class Race {
       else { m.fallSpot = from; m.fallsHere = 1; }
       if (m.fallsHere <= RACE.fallsBeforeSkip) {
         i = from;
-        while (i > 0 && (path[i].s > path[from].s - RACE.rescueBack || !safe(i))) i--;
+        for (let n = 0; n < path.length && i > 0 && (path[i].s > path[from].s - RACE.rescueBack || !safe(i)); n++) {
+          i = course.prevIndex(i);
+        }
         if (!safe(i)) i = ahead(from, 0);
       } else {
         i = ahead(from, 0.5);
