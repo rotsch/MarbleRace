@@ -8,8 +8,8 @@ const NEAR = { follow: 0.05, free: 0.05, pov: 0.01 };
 
 // Three camera modes:
 //  follow  smoothly tracks the leading marble
-//  free    fly camera: click to steer with the mouse (pointer lock), WASD to
-//          move, Q/E up/down, Shift to move faster
+//  free    fly camera: click to steer with the mouse (pointer lock) or hold
+//          the right button, WASD to move, Q/E up/down, Shift to move faster
 //  pov     rides on the leading marble, looking where it is going
 export class CameraRig {
   constructor(camera, dom) {
@@ -36,8 +36,18 @@ export class CameraRig {
       if (!this.free) this._requestFree();
       if (document.pointerLockElement !== dom) dom.requestPointerLock?.();
     });
+    // Holding the right mouse button also steers the free camera, without
+    // grabbing the mouse (the track editor needs the cursor for clicking).
+    this.looking = false;
+    dom.addEventListener('mousedown', (e) => {
+      if (e.button === 2 && this.free) this.looking = true;
+    });
+    window.addEventListener('mouseup', (e) => {
+      if (e.button === 2) this.looking = false;
+    });
+    dom.addEventListener('contextmenu', (e) => e.preventDefault());
     document.addEventListener('mousemove', (e) => {
-      if (!this.free || document.pointerLockElement !== dom) return;
+      if (!this.free || (document.pointerLockElement !== dom && !this.looking)) return;
       this.yaw -= e.movementX * this.sensitivity;
       this.pitch = THREE.MathUtils.clamp(this.pitch - e.movementY * this.sensitivity, -MAX_PITCH, MAX_PITCH);
     });

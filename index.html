@@ -34,6 +34,53 @@
         <ol id="ranking-list"></ol>
         <div id="clock">0.00 s</div>
       </section>
+      <section id="editor" class="panel" hidden>
+        <h2>Track editor</h2>
+        <div class="row">
+          <button id="ed-move" class="tool" title="Move the selected piece (1)">Move (1)</button>
+          <button id="ed-rotate" class="tool" title="Turn the selected piece (2)">Rotate (2)</button>
+          <button id="ed-shape" class="tool" title="Widen the track and raise or lower its walls (3)">Shape (3)</button>
+        </div>
+        <select id="ed-pieces" size="8" aria-label="Pieces"></select>
+        <div id="ed-piece" hidden>
+          <label>Name <input id="ed-name" type="text" spellcheck="false" /></label>
+          <p id="ed-type-label"></p>
+          <div id="ed-fields"></div>
+          <div id="ed-shape-box">
+            <p class="sub">Shape <span id="ed-shape-length"></span></p>
+            <table id="ed-stops">
+              <thead><tr><th title="Distance from the start of the piece">At</th><th title="Added to the track width">Width</th><th title="Added to the left wall's height">Left</th><th title="Added to the right wall's height">Right</th><th></th></tr></thead>
+              <tbody></tbody>
+            </table>
+            <button id="ed-add-stop" title="Add a shape stop, then drag its wall handles (Shape mode) or type values">Add shape stop</button>
+          </div>
+          <div id="ed-connect" hidden>
+            <p class="sub">Connect</p>
+            <div id="ed-connect-list"></div>
+          </div>
+          <div class="row">
+            <button id="ed-detach" title="Unlink from the piece before it, keeping it where it is">Detach</button>
+            <button id="ed-delete" title="Delete the selected piece (Del)">Delete</button>
+          </div>
+        </div>
+        <div class="row">
+          <select id="ed-type" aria-label="Piece type"></select>
+          <button id="ed-add" title="Add after the selected piece, or in front of the camera">Add</button>
+        </div>
+        <div class="row">
+          <button id="ed-undo" title="Undo (Ctrl+Z)">Undo</button>
+          <button id="ed-redo" title="Redo (Ctrl+Y)">Redo</button>
+        </div>
+        <div class="row">
+          <button id="ed-export" title="Save the course as a JSON file">Export</button>
+          <button id="ed-import" title="Load a course JSON file">Import</button>
+          <input id="ed-file" type="file" accept=".json,application/json" hidden />
+        </div>
+        <button id="ed-reset" title="Throw away all edits">Reset course</button>
+        <ul id="ed-problems"></ul>
+        <p class="note">Click a piece to select it, then drag the arrows (or the ring) to move it. Sockets: <b class="in">green</b> in, <b class="out">orange</b> out; drop one near another to snap them together. Alt-drag moves only the piece, not the ones after it. Hold the right mouse button to look, WASD / Q E to fly.</p>
+        <button id="ed-test" class="primary" title="Leave the editor and race on this course (G)">Test race</button>
+      </section>
       <section id="controls" class="panel">
         <label>Seed <input id="seed" type="text" spellcheck="false" /></label>
         <div class="row">
@@ -66,6 +113,7 @@
           </select>
         </label>
         <p id="hint">Follow camera tracks the leader.</p>
+        <button id="edit-track" title="Move, rotate, add and delete track pieces (G)">Edit track (G)</button>
         <details id="physics">
           <summary>Physics</summary>
           <div id="tunables"></div>

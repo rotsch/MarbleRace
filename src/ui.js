@@ -79,6 +79,29 @@ export class UI {
         this.stepSpeed(e.key === 'ArrowRight' ? 1 : -1, handlers);
         return;
       }
+      // Track editor keys: G on / off; while on, 1 / 2 move / rotate, Del
+      // deletes, Ctrl+Z / Ctrl+Y undo / redo, Esc deselects. Keys that would
+      // change the camera or restart the race are off while editing.
+      if ((e.key === 'g' || e.key === 'G') && !typing) {
+        handlers.edit();
+        return;
+      }
+      if (handlers.editing() && !typing) {
+        const ed = handlers.editor;
+        if (e.key === '1') ed.setMode('translate');
+        else if (e.key === '2') ed.setMode('rotate');
+        else if (e.key === '3') ed.setMode('shape');
+        else if (e.key === 'Delete' || e.key === 'Backspace') this._try(() => ed.deletePiece());
+        else if (e.key === 'Escape') ed.select(null);
+        else if ((e.ctrlKey || e.metaKey) && (e.key === 'z' || e.key === 'Z')) {
+          e.preventDefault();
+          this._try(() => (e.shiftKey ? ed.redoStep() : ed.undoStep()));
+        } else if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || e.key === 'Y')) {
+          e.preventDefault();
+          this._try(() => ed.redoStep());
+        }
+        if (/^[cCfFrR]$/.test(e.key)) return;
+      }
       if ((e.key === 'f' || e.key === 'F') && !typing) {
         handlers.shoot();
       } else if (e.key === 'm' || e.key === 'M') {
@@ -99,6 +122,15 @@ export class UI {
         handlers.resetKey(this.seed.value.trim() || '1');
       }
     });
+  }
+
+  _try(fn) {
+    try {
+      fn();
+    } catch (err) {
+      console.error(err);
+      alert(err.message);
+    }
   }
 
   // One slider per tunable value. Values take effect on Apply (a restart).

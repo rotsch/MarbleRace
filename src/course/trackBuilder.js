@@ -5,6 +5,29 @@ import { sweepRings, v2 } from './geometry.js';
 const JOINT_RELIEF = 0.005;
 const val = (v, d, total, i) => (typeof v === 'function' ? v(d, total, i) : v);
 
+// Shape stops (track editor): changes a placed piece makes to its own
+// design, at distances along the piece's main route.
+//  [{ d, width, left, right }]  width: added to the inner width (both sides
+//  equally); left / right: added to that wall's height. A wall brought down to
+//  0 leaves that side open. Between stops the change eases smoothly; before
+//  the first stop and after the last it eases back to nothing over SHAPE_EASE.
+export const SHAPE_EASE = 0.5;
+const MIN_HALF_WIDTH = 0.08; // a little more than a marble radius
+const smooth = (u) => u * u * (3 - 2 * u);
+export function shapeAt(stops, d) {
+  if (!stops?.length) return null;
+  const at = (s, u) => ({ width: (s.width ?? 0) * u, left: (s.left ?? 0) * u, right: (s.right ?? 0) * u });
+  const first = stops[0], last = stops[stops.length - 1];
+  if (d <= first.d) return at(first, smooth(Math.max(0, 1 - (first.d - d) / SHAPE_EASE)));
+  if (d >= last.d) return at(last, smooth(Math.max(0, 1 - (d - last.d) / SHAPE_EASE)));
+  let i = 1;
+  while (stops[i].d < d) i++;
+  const a = stops[i - 1], b = stops[i];
+  const u = smooth((d - a.d) / (b.d - a.d || 1));
+  const A = at(a, 1), B = at(b, 1);
+  return { width: A.width + (B.width - A.width) * u, left: A.left + (B.left - A.left) * u, right: A.right + (B.right - A.right) * u };
+}
+
 // Cross-section of a U channel in local (x = left, y = up) coordinates.
 //  l, r    half-widths to the left and right of the centre line
 //  hl, hr  rail heights
@@ -24,7 +47,13 @@ export function uProfile(l, r, hl, hr, t = TRACK.railThickness, tf = TRACK.floor
 // opts.rail:  number or (d, total, i) => number | { l, r }   (rail heights)
 // opts.path:  record the centre line as race progress (default true)
 export function buildTrack(ctx, frames, opts = {}) {
-  const total = frames[frames.length - 1].d - frames[0].d || 1;
+  const length = frames[frames.length - 1].d - frames[0].d;
+  const total = length || 1;
+  // The piece's main route (the one recorded as race progress) takes the
+  // piece's shape stops, measured from the start of the piece.
+  const piece = opts.path !== false ? ctx.piece : null;
+  const d0 = piece?.mainD ?? 0;
+  const shape = piece?.shape?.length ? piece.shape : null;
   let profile0 = null;
   const rings = frames.map((f, i) => {
     const d = f.d - frames[0].d;
@@ -32,6 +61,13 @@ export function buildTrack(ctx, frames, opts = {}) {
     if (typeof w === 'number') w = { l: w / 2, r: w / 2 };
     let h = val(opts.rail ?? TRACK.railHeight, d, total, i);
     if (typeof h === 'number') h = { l: h, r: h };
+    if (shape) {
+      const s = shapeAt(shape, d0 + d);
+      w = { l: Math.max(MIN_HALF_WIDTH, w.l + s.width / 2), r: Math.max(MIN_HALF_WIDTH, w.r + s.width / 2) };
+      h = { l: Math.max(0, h.l + s.left), r: Math.max(0, h.r + s.right) };
+    }
+    // Where the walls are, for the editor's shape handles.
+    if (piece && ctx.group) piece.samples.push({ d: d0 + d, frame: f, w, h });
     // Joint relief: each piece starts a few millimetres lower and wider than
     // nominal and eases back. A marble crossing from the previous piece then
     // always steps slightly down/out onto a face, and never runs into the
@@ -42,6 +78,7 @@ export function buildTrack(ctx, frames, opts = {}) {
     return prof.map((p) => framePoint(f, p.x, p.y - relief, 0));
   });
   ctx.addSolid(sweepRings(rings, profile0), opts.material);
+  if (piece) piece.mainD = d0 + length;
   if (opts.path !== false) ctx.addPath(frames);
   return frames[frames.length - 1];
 }

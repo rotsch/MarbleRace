@@ -275,5 +275,5 @@ function addSpectators(ctx, seats) {
     mesh.setColorAt(i, color.setHex(s.color));
   });
   mesh.userData.decor = true;
-  ctx.group.add(mesh);
+  ctx.addObject(mesh);
 }

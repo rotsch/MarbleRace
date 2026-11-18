@@ -65,7 +65,7 @@ export function build(ctx, entry, opts = {}) {
   ctx.addPathPoint(new Vector3(center.x, center.y + yHole, center.z));
 
   // Catch tray under the hole, heading off in exitYaw.
-  const yaw = opts.exitYaw ?? entry.yaw;
+  const yaw = opts.exitYaw ?? entry.yaw + (opts.exitTurn ?? 0);
   const dir = new Vector3(Math.sin(yaw), 0, Math.cos(yaw));
   const start = {
     pos: new Vector3(center.x, center.y + yHole - tube - 0.34, center.z).addScaledVector(dir, -0.55),

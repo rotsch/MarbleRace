@@ -1,5 +1,6 @@
 import {
   Group, Mesh, LineSegments, EdgesGeometry, BoxGeometry, CylinderGeometry, Vector3, Quaternion,
+  MeshStandardMaterial, DoubleSide,
 } from 'three';
 import { ConvexGeometry } from 'three/examples/jsm/geometries/ConvexGeometry.js';
 import { TRACK } from '../config.js';
@@ -25,12 +26,128 @@ export class CourseContext {
     this.cameraHints = [];
     this.zones = []; // see addZone
     this.spawn = null;
+    // Placed pieces (see pieces.js): id -> { id, type, name, group, entry,
+    // ins, outs, path0, path1 }. Sockets: { pieceId, kind, index, pos, yaw, pitch, up }.
+    this.pieces = new Map();
+    this.piece = null; // piece being built
+    this.pathFrom = null; // path index the next point carries on from (see addPathPoint)
+    this.lift = 0; // how far finalize() raised the course
+  }
+
+  // Start building a piece: its meshes go into a group of their own and its
+  // entry is socket in 0 (unless the piece type has no input).
+  beginPiece(piece, entry, type = {}) {
+    const n = this.path.length;
+    const p = {
+      id: piece.id, type: piece.type, name: piece.name, group: null, entry, ins: [], outs: [], path0: n, path1: n,
+      // Shape stops (see trackBuilder.js), sorted, and how far the main
+      // route has got; samples: wall positions along it, for the editor.
+      shape: (piece.shape ?? []).slice().sort((a, b) => a.d - b.d), mainD: 0, samples: [],
+    };
+    if (this.group) {
+      p.group = new Group();
+      p.group.userData.pieceId = piece.id;
+      this.group.add(p.group);
+    }
+    this.pieces.set(piece.id, p);
+    this.piece = p;
+    if (!type.noInput) this.addSocket('in', entry);
+    p.pathFrom = this.pathFrom;
+  }
+
+  endPiece(exits) {
+    const p = this.piece;
+    exits.forEach((f) => this.addSocket('out', f));
+    p.path1 = this.path.length;
+    // Last centre-line point of the route through this piece (or, for a piece
+    // without one, the point it carried on from).
+    p.lastPath = p.path1 > p.path0 ? p.path1 - 1 : p.pathFrom;
+    this.piece = null;
+    this.pathFrom = null;
+  }
+
+  // Links between built pieces (from pieces.js): piece id -> ids after / before.
+  setLinks(links) {
+    for (const p of this.pieces.values()) {
+      p.next = [];
+      p.prev = [];
+    }
+    for (const l of links) {
+      const a = this.pieces.get(l.from[0]), b = this.pieces.get(l.to[0]);
+      if (!a || !b) continue;
+      a.next.push(b);
+      b.prev.push(a);
+    }
+  }
+
+  // Next / previous centre-line point along the course. Within a piece and
+  // along a plain chain that is i + 1 / i - 1; at the end of a piece whose
+  // successor was recorded elsewhere (routes out of a fork, a merge's second
+  // input) it jumps to that piece.
+  nextIndex(i) {
+    const p = this.pieces.get(this.path[i]?.piece);
+    if (p && i === p.path1 - 1 && p.next?.length && !p.next.some((n) => n.path0 === p.path1)) {
+      const n = p.next.find((n) => n.path1 > n.path0);
+      if (n) return n.path0;
+    }
+    return Math.min(i + 1, this.path.length - 1);
+  }
+
+  prevIndex(i) {
+    const p = this.pieces.get(this.path[i]?.piece);
+    if (p && i === p.path0 && p.prev?.length && !p.prev.some((q) => q.path1 === p.path0)) {
+      const q = p.prev.find((q) => q.lastPath != null);
+      if (q) return q.lastPath;
+    }
+    return Math.max(i - 1, 0);
+  }
+
+  // Extra index ranges the nearest-point search must look at from point i,
+  // beyond i - back .. i + ahead in the array: the starts of pieces after
+  // this one and the ends of pieces before it that were recorded elsewhere.
+  searchRanges(i, back, ahead) {
+    const p = this.pieces.get(this.path[i]?.piece);
+    const out = [];
+    if (!p) return out;
+    const toEnd = p.path1 - 1 - i;
+    if (toEnd < ahead) {
+      for (const n of p.next ?? []) if (n.path0 !== p.path1) out.push([n.path0, Math.min(n.path1 - 1, n.path0 + ahead - toEnd)]);
+    }
+    const fromStart = i - p.path0;
+    if (fromStart < back) {
+      for (const q of p.prev ?? []) {
+        if (q.path1 !== p.path0 && q.lastPath != null) out.push([Math.max(q.path0, q.lastPath - (back - fromStart)), q.lastPath]);
+      }
+    }
+    return out;
+  }
+
+  // A socket of the piece being built: a pose on the track floor, on the
+  // centre line, facing the way marbles travel.
+  addSocket(kind, frame) {
+    const p = this.piece;
+    if (!p) return;
+    const list = kind === 'in' ? p.ins : p.outs;
+    list.push({
+      pieceId: p.id, kind, index: list.length, pos: frame.pos.clone(), yaw: frame.yaw, pitch: frame.pitch ?? 0,
+      up: frame.U ? frame.U.clone() : new Vector3(0, 1, 0),
+    });
+  }
+
+  // Group the current piece's meshes go into.
+  get target() {
+    return this.piece?.group ?? this.group;
+  }
+
+  // Add a ready-made object (decoration) to the current piece.
+  addObject(obj) {
+    if (this.group) this.target.add(obj);
   }
 
   section(name) {
     this.sectionName = name;
     this.cameraHint = null;
-    const s0 = this.path.length ? this.path[this.path.length - 1].s : 0;
+    const s0 = this.path.length ? this.path[this.pathFrom ?? this.path.length - 1].s : 0;
     this.sections.push({ name, s0 });
   }
 
@@ -62,18 +179,22 @@ export class CourseContext {
     return this.world.createCollider(desc, this.body);
   }
 
-  _visual(geometry, position, quaternion, edgeAngle = 25) {
+  _visual(geometry, position, quaternion, edgeAngle = 25, look = null) {
     if (!this.group) return;
-    const mesh = new Mesh(geometry, this.materials.surface);
+    const mesh = new Mesh(geometry, look ?? this.materials.surface);
+    // Its own look (glass): kept through look switches, like decoration.
+    if (look) mesh.userData.decor = true;
     const lines = new LineSegments(new EdgesGeometry(geometry, edgeAngle), this.materials.outline);
     mesh.add(lines);
     if (position) mesh.position.copy(position);
     if (quaternion) mesh.quaternion.copy(quaternion);
-    this.group.add(mesh);
+    this.target.add(mesh);
   }
 
   // Indexed BufferGeometry in course coordinates -> trimesh collider.
-  addSolid(geometry, material) {
+  // look: 'glass' for a see-through solid (tunnel roofs), so the marbles
+  // inside stay visible.
+  addSolid(geometry, material, look = null) {
     const R = this.RAPIER;
     const pos = geometry.attributes.position.array;
     for (let i = 0; i < pos.length; i += 3) this._grow(pos[i], pos[i + 1], pos[i + 2]);
@@ -84,7 +205,7 @@ export class CourseContext {
     if (this.group) {
       const flat = geometry.toNonIndexed();
       flat.computeVertexNormals();
-      this._visual(flat);
+      this._visual(flat, null, null, 25, look === 'glass' ? glass() : null);
     }
   }
 
@@ -133,7 +254,7 @@ export class CourseContext {
     if (position) mesh.position.copy(position);
     if (quaternion) mesh.quaternion.copy(quaternion);
     mesh.userData.decor = true;
-    this.group.add(mesh);
+    this.target.add(mesh);
     return mesh;
   }
 
@@ -170,19 +291,26 @@ export class CourseContext {
   // Points added directly (jumps, the funnel's hole) and the points bridging
   // gaps between them are in the air: not `solid`, so never a rescue spot.
   addPathPoint(pos, up = new Vector3(0, 1, 0), tangent = null, solid = false) {
-    const prev = this.path[this.path.length - 1];
+    // A piece's first point carries on from the end of the piece it is
+    // linked to (pathFrom), which is not always the last point recorded:
+    // the second route out of a fork starts at the fork, not at the finish.
+    const prev = this.path[this.pathFrom ?? this.path.length - 1];
     const dist = prev ? prev.pos.distanceTo(pos) : 0;
     if (prev && dist < 1e-4) return;
+    this.pathFrom = null;
     // Bridge jumps between sections with intermediate points so the nearest
     // point search always has something close by.
+    // A course this big is a broken edit, not a track: stop before filling
+    // the gap with millions of points.
+    if (!(dist < 1000)) throw new Error('the course runs off too far (a slope or length is far too big)');
     if (prev && dist > 0.2) {
       const n = Math.ceil(dist / 0.1);
       for (let i = 1; i < n; i++) {
         const p = prev.pos.clone().lerp(pos, i / n);
-        this.path.push({ pos: p, up: new Vector3(0, 1, 0), tangent: null, s: prev.s + (dist * i) / n, section: this.sectionName, cam: this.cameraHint, solid: false });
+        this.path.push({ pos: p, up: new Vector3(0, 1, 0), tangent: null, s: prev.s + (dist * i) / n, section: this.sectionName, piece: this.piece?.id, cam: this.cameraHint, solid: false });
       }
     }
-    this.path.push({ pos: pos.clone(), up: up.clone(), tangent: tangent && tangent.clone(), s: (prev ? prev.s : 0) + dist, section: this.sectionName, cam: this.cameraHint, solid });
+    this.path.push({ pos: pos.clone(), up: up.clone(), tangent: tangent && tangent.clone(), s: (prev ? prev.s : 0) + dist, section: this.sectionName, piece: this.piece?.id, cam: this.cameraHint, solid });
   }
 
   // Lift the whole course so its lowest point sits `clearance` above the floor.
@@ -199,11 +327,22 @@ export class CourseContext {
       }
     }
     if (this.spawn) this.spawn.forEach((p) => (p.y += dy));
+    this.lift = dy;
+    for (const piece of this.pieces.values()) for (const k of [...piece.ins, ...piece.outs]) k.pos.y += dy;
     for (const h of this.cameraHints) if (h.pos) h.pos.y += dy;
     this.bounds.min.y += dy;
     this.bounds.max.y += dy;
-    this.length = this.path[this.path.length - 1].s;
+    this.length = this.path.reduce((a, p) => Math.max(a, p.s), 0); // the furthest point (routes may be recorded after the finish)
   }
+}
+
+// See-through material for tunnel roofs, shared by every race.
+let GLASS = null;
+function glass() {
+  GLASS ??= new MeshStandardMaterial({
+    color: 0xd7ecff, transparent: true, opacity: 0.22, roughness: 0.15, metalness: 0, depthWrite: false, side: DoubleSide,
+  });
+  return GLASS;
 }
 
 export { Vector3, Quaternion };

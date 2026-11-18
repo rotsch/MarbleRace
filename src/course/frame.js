@@ -38,6 +38,10 @@ const lerp = (a, b, u) => a + (b - a) * u;
 //  bank  peak bank angle, eased in and out
 // Returns frames sampled every ~step, including the start frame. frame.d is
 // the horizontal distance travelled from the start.
+// Steepest slope a traced path takes: tan(90 degrees) is endless.
+const MAX_PITCH = (85 * Math.PI) / 180;
+const clampPitch = (p) => Math.max(-MAX_PITCH, Math.min(MAX_PITCH, p));
+
 export function tracePath(start, segments, step = TRACK.step) {
   const frames = [makeFrame(start.pos, start.yaw, start.pitch, 0)];
   const pos = start.pos.clone();
@@ -47,7 +51,7 @@ export function tracePath(start, segments, step = TRACK.step) {
   for (const seg of segments) {
     const turn = seg.turn || 0;
     const p0 = pitch;
-    const p1 = seg.pitch === undefined ? pitch : seg.pitch;
+    const p1 = seg.pitch === undefined ? pitch : clampPitch(seg.pitch);
     const bank = seg.bank || 0;
     const slope = p0 < 0 && p1 < 0 ? Math.tan(Math.min(-p0, -p1)) : 0;
     const bankRate = (0.8 * slope) / (TRACK.width / 2);

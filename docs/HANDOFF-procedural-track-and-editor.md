@@ -1,6 +1,11 @@
 # Handoff: Procedural track generation & track-piece editor
 
-Status: **design notes only — nothing implemented yet.**
+Status: **the editor for placed pieces is implemented** (see "Track editor" in
+README.md): course as data with sockets and links (`src/course/pieces.js`),
+gizmo move/rotate with socket snapping, fork/merge pieces with link-aware race
+progress, undo/redo, localStorage + JSON export/import, `sim --course`.
+Not done yet: streaming/procedural generation (section 2), headless
+validation from the editor, preview chain, spline editing, glTF import.
 Purpose: capture the direction discussed so a later session can pick it up.
 
 ---

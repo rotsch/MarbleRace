@@ -9,6 +9,9 @@ import { loadStored } from './tuning.js';
 import { MARBLE, PHYSICS } from './config.js';
 import { START_LIGHTS } from './course/decor.js';
 import { Sound } from './audio.js';
+import { Editor, loadStoredCourse } from './editor.js';
+import { EditorPanel } from './editorPanel.js';
+import { defaultCourse } from './course/pieces.js';
 
 loadStored(); // physics values the player set last time
 
@@ -19,6 +22,13 @@ const view = new View(document.getElementById('scene'));
 const rig = new CameraRig(view.camera, view.renderer.domElement);
 const stepper = new FixedStepper();
 let race = null;
+// The course as data (see course/pieces.js): ?layout=... for one section on
+// its own, otherwise the course last edited in this browser (?course=default
+// ignores it), otherwise the original course.
+const layout = params.get('layout') || 'full';
+let course = params.get('layout') || params.get('course') === 'default'
+  ? defaultCourse(layout)
+  : loadStoredCourse() ?? defaultCourse(layout);
 // Marble the leader's view rides on: the leader, or once everyone has
 // finished, whoever led last.
 let povIndex = null;
@@ -118,7 +128,7 @@ function playRaceSounds() {
 // countdown: false only for the very first race, which waits for Start.
 function restart(seed, countdown = true) {
   if (race) race.dispose();
-  race = new Race(RAPIER, seed, view.materials, params.get('layout') || 'full');
+  race = new Race(RAPIER, seed, view.materials, course);
   view.setRace(race);
   stepper.accumulator = 0;
   rig.reset();
@@ -133,7 +143,8 @@ function restart(seed, countdown = true) {
   if (countdown) startCountdown();
   else {
     phase = 'ready';
-    ui.showStart(startCountdown);
+    if (editor?.active) ui.hideStart();
+    else ui.showStart(startCountdown);
   }
 }
 
@@ -152,6 +163,8 @@ const handlers = {
   wireframe: (on) => (sound.click(on ? 1.2 : 0.9), view.setWireframe(on)),
   camera: (mode) => (sound.click(), rig.setMode(mode)),
   look: (look) => (sound.click(look === 'white' ? 0.9 : 1.2), view.setLook(look)),
+  editing: () => editor.active,
+  edit: () => setEditing(!editor.active),
 };
 const ui = new UI(handlers);
 ui.bindSound(sound);
@@ -181,7 +194,8 @@ function shoot() {
   race.shoot(start, direction, SHOT_SPEED, SHOT_COLORS[shotCount++ % SHOT_COLORS.length]);
   sound.shot();
 }
-rig.onClick = () => {
+rig.onClick = (e) => {
+  if (editor.click(e)) return true;
   if (!shooting) return false;
   if (rig.mode === 'free' && document.pointerLockElement !== canvas) return false;
   shoot();
@@ -200,8 +214,56 @@ handlers.shooting = (on) => {
   showAim();
 };
 handlers.shoot = () => shooting && shoot();
+// Track editor (G): the race waits on the start line while pieces are edited;
+// every edit rebuilds the course from its data.
+let editor = null;
+editor = new Editor(view, rig, {
+  race: () => race,
+  course: () => course,
+  layout,
+  rebuild: (data) => {
+    course = data;
+    restart(ui.seed.value.trim() || '1', false);
+  },
+});
+handlers.editor = editor;
+window.editor = editor; // console access, like window.race
+const editorPanel = new EditorPanel(editor, { onTest: () => setEditing(false, true) });
+function setEditing(on, test = false) {
+  if (on) {
+    if (phase !== 'ready') restart(ui.seed.value.trim() || '1', false);
+    ui.hideStart();
+    ui.setCamera('free', handlers);
+  }
+  editor.setActive(on);
+  if (!on) {
+    if (test) {
+      ui.setCamera('follow', handlers);
+      restart(ui.seed.value.trim() || '1', true);
+    } else if (phase === 'ready') ui.showStart(startCountdown);
+  }
+  editorPanel.show();
+}
+document.getElementById('edit-track').addEventListener('click', (e) => {
+  e.currentTarget.blur();
+  setEditing(!editor.active);
+});
+
 ui.seed.value = params.get('seed') || '1';
-restart(ui.seed.value, false);
+try {
+  restart(ui.seed.value, false);
+} catch (err) {
+  // The course saved by the editor does not build: start on the original
+  // one instead, and forget the broken one.
+  console.error('Saved course does not build, using the original course:', err);
+  try {
+    localStorage.removeItem('marble-race-course');
+  } catch {
+    // ignore
+  }
+  course = defaultCourse(layout);
+  restart(ui.seed.value, false);
+}
 // ?look=neon (or pictures) starts in that look.
 if (params.get('look')) ui.setLook(params.get('look'), handlers);
 
@@ -243,6 +305,7 @@ function frame(now) {
   if (phase === 'running') {
     alpha = paused ? stepper.accumulator / PHYSICS.timestep : stepper.advance(frameDt, speed, () => race.step());
   }
+  editor.update(now);
   view.updateMarbles(race.marbles, alpha);
   view.updateShots(race);
   playRaceSounds();

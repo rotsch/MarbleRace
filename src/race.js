@@ -13,7 +13,7 @@ const IMPACT_MIN = 1.4;
 // One race: world + course + marbles + ranking. No DOM or rendering in here,
 // so it also runs headless (scripts/sim.mjs).
 export class Race {
-  constructor(RAPIER, seed, materials = null, layout = 'full') {
+  constructor(RAPIER, seed, materials = null, layout = 'full') { // layout: name or course data
     this.RAPIER = RAPIER;
     this.seed = seed;
     this.world = createWorld(RAPIER);
@@ -130,6 +130,13 @@ export class Race {
       const d = d2(i);
       if (d < bestD) { bestD = d; best = i; }
     }
+    // Routes recorded elsewhere in the array (after a fork, into a merge).
+    for (const [a, b] of this.course.searchRanges(m.pathIndex, 30, 90)) {
+      for (let i = a; i <= b; i++) {
+        const d = d2(i);
+        if (d < bestD) { bestD = d; best = i; }
+      }
+    }
     if (bestD > 9 && this.steps % 30 === 0) {
       for (let i = 0; i < path.length; i += 2) {
         const d = d2(i);
@@ -242,12 +249,19 @@ export class Race {
   //  stuck: a little ahead of where it is, past whatever holds it.
   _rescue(m, why) {
     const path = this.course.path;
-    const cap = this.course.finishIndex - 8; // never drop a marble past the finish line
+    const course = this.course;
+    const capS = path[course.finishIndex - 8].s; // never drop a marble past the finish line
     const safe = (i) => path[i].solid && path[i].up.y > 0.6; // up to ~53 deg slope
+    // Walk along the course (following links between pieces) to the first
+    // safe point at least `dist` further on, stopping short of the finish.
     const ahead = (from, dist) => {
       let i = from;
-      while (i < cap && (path[i].s < path[from].s + dist || !safe(i))) i++;
-      return Math.min(i, cap);
+      for (let n = 0; n < path.length && path[i].s < capS && (path[i].s < path[from].s + dist || !safe(i)); n++) {
+        const j = course.nextIndex(i);
+        if (j === i) break;
+        i = j;
+      }
+      return path[i].s < capS ? i : course.finishIndex - 8;
     };
     let i;
     if (why === 'fell') {
@@ -256,7 +270,9 @@ export class Race {
       else { m.fallSpot = from; m.fallsHere = 1; }
       if (m.fallsHere <= RACE.fallsBeforeSkip) {
         i = from;
-        while (i > 0 && (path[i].s > path[from].s - RACE.rescueBack || !safe(i))) i--;
+        for (let n = 0; n < path.length && i > 0 && (path[i].s > path[from].s - RACE.rescueBack || !safe(i)); n++) {
+          i = course.prevIndex(i);
+        }
         if (!safe(i)) i = ahead(from, 0);
       } else {
         i = ahead(from, 0.5);

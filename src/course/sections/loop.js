@@ -15,7 +15,7 @@ import { TRACK } from '../../config.js';
 // does any marble that rolls back down out of the loop (from that side the gap
 // is a step up, so it cannot get back onto the ramp). Underneath, a channel
 // collects them and rejoins the course after the loop.
-// opts: { radius, drop, shift, gap }
+// opts: { radius, drop, shift, gap, bypassDepth }
 export function build(ctx, entry, opts = {}) {
   const r = opts.radius ?? 0.55;
   const drop = opts.drop ?? 3.2 * r;
@@ -69,13 +69,16 @@ export function build(ctx, entry, opts = {}) {
 
   // Bypass channel under the gap. Under the loop it widens into a tray with
   // a wide floor, which also catches marbles that fall off the loop.
-  const depth = 0.36, back = 0.45, lowPitch = 0.05;
+  // Deep enough that the track coming down from the loop clears the
+  // channel's walls where it passes over them before the merge (7 cm).
+  const depth = opts.bypassDepth ?? 0.55, back = 0.45, lowPitch = 0.05;
   const lowStart = framePoint(makeFrame(edge.pos, edge.yaw, 0), 0, -depth + Math.tan(lowPitch) * back, -back);
   const half = TRACK.width / 2;
   const trayEnd = back + gap + runIn + r + 0.35;
   const tray = { l: shift + half + 0.25, r: half + 0.35 };
   const { exit: merged, lowFrames } = rejoin(ctx, {
-    main: { pos: out.pos, yaw: out.yaw, rail: 0.4 },
+    // Starts level, like the end of the loop, so the two meet without a kink.
+    main: { pos: out.pos, yaw: out.yaw, rail: 0.4, pitch0: 0 },
     low: {
       pos: lowStart,
       widthFn: widthStops([[0, tray], [trayEnd, tray], [trayEnd + 1.2, { l: half, r: half }]]),
