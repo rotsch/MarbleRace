@@ -71,7 +71,7 @@ beside the marble) turns it; the wheel zooms.
 | Eraser `E` | removes paint, the base shows again |
 | Fill `F` | fills an area of about one colour (a stripe of the pattern, a painted shape) |
 | Ring `R` | a band right round the marble: drag across it (the band runs through both points), or click for one across the view; Size sets its width |
-| Sticker `T` | stamps a star, heart, circle, ring, lightning bolt, flower, crown, triangle, moon, eye, text, or a picture of your own (Picture… loads any image), with size and rotation; a preview shows where it goes |
+| Sticker `T` | stamps a sticker with size and rotation; a preview shows where it goes. 57 stickers in five groups: **Shapes** (circle, ring, square, triangle, diamond, hexagon, star, six-point star, sparkle, heart, plus, cross, target, spiral, infinity), **Symbols** (lightning, arrow, tick, music note, spade, club, gem, crown, shield, anchor, peace, dice, number badge, flag, rocket), **Nature** (sun, moon, cloud, snowflake, droplet, flame, leaf, four-leaf clover, flower, pine tree, waves, planet, mushroom), **Creatures and faces** (paw print, fish, bone, butterfly, cat, ghost, skull, smiley, wink, sad face, sunglasses face, eye) and **Your own** (text, emoji included, and Picture…, any image). Stickers take the paint colour; the eye and pictures keep their own colours. The number badge shows what is in the Text field. Add more in `src/stickers.js` |
 | Pick colour `I` | takes the colour under the cursor |
 | Turn `H` | turns the marble |
 
@@ -297,6 +297,7 @@ src/
   tracks.js            list / load / save the tracks in tracks/ (via the dev server, see vite.config.js)
   designs.js           marble designs: base patterns, textures, finishes, the marbles/ folder
   painter.js           marble paint editor
+  stickers.js          the paint editor's sticker shapes
   setup.js             race setup: number of marbles, names, designs
   lineup.js            the racers down the left, spinning 3D marbles
   physics.js           world setup, fixed-timestep accumulator

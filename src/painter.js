@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
+import { STICKERS, OWN_COLOURS, drawSticker } from './stickers.js';
 import { COLORS } from './config.js';
 import {
   TEX_W, TEX_H, DESIGN_VERSION, PATTERNS, FINISHES, drawBase, finishParams, loadImage, newDesign,
@@ -34,20 +35,6 @@ const TOOLS = [
   { id: 'turn', label: 'Turn', key: 'h', hint: 'Drag to turn the marble.' },
 ];
 
-const SHAPES = [
-  { id: 'star', label: 'Star' },
-  { id: 'heart', label: 'Heart' },
-  { id: 'circle', label: 'Circle' },
-  { id: 'ring', label: 'Ring' },
-  { id: 'bolt', label: 'Lightning' },
-  { id: 'flower', label: 'Flower' },
-  { id: 'crown', label: 'Crown' },
-  { id: 'triangle', label: 'Triangle' },
-  { id: 'moon', label: 'Moon' },
-  { id: 'eye', label: 'Eye' },
-  { id: 'text', label: 'Text' },
-  { id: 'image', label: 'Picture…' },
-];
 
 const SWATCHES = ['#ffffff', '#d0d0d0', '#808080', '#3a3a3a', '#000000', ...COLORS.map((c) => `#${c.hex.toString(16).padStart(6, '0')}`)];
 
@@ -859,7 +846,12 @@ export class Painter {
 
     // Sticker
     const shape = $('pt-shape');
-    shape.append(...SHAPES.map((s) => new Option(s.label, s.id)));
+    for (const grp of STICKERS) {
+      const og = document.createElement('optgroup');
+      og.label = grp.group;
+      og.append(...grp.items.map(([id, label]) => new Option(label, id)));
+      shape.append(og);
+    }
     shape.addEventListener('change', () => {
       if (shape.value === 'image') {
         $('pt-image-file').click();
@@ -886,7 +878,7 @@ export class Painter {
     });
     $('pt-text').addEventListener('input', (e) => {
       this.sticker.text = e.target.value;
-      if (this.sticker.shape !== 'text') {
+      if (this.sticker.shape !== 'text' && this.sticker.shape !== 'badge') {
         this.sticker.shape = 'text';
         shape.value = 'text';
       }
@@ -1020,112 +1012,32 @@ export class Painter {
     g.save();
     g.translate(S / 2, S / 2);
     g.scale(S / 2, S / 2); // drawing space: -1..1
-    switch (shape) {
-      case 'star': {
-        g.beginPath();
-        for (let i = 0; i < 10; i++) {
-          const a = -Math.PI / 2 + (i * Math.PI) / 5;
-          const r = i % 2 ? 0.42 : 0.98;
-          g.lineTo(Math.cos(a) * r, Math.sin(a) * r + 0.06);
-        }
-        g.fill();
-        break;
+    if (shape === 'text') {
+      g.restore();
+      g.save();
+      const text = this.sticker.text || ' ';
+      g.textAlign = 'center';
+      g.textBaseline = 'middle';
+      let px = 400;
+      g.font = `bold ${px}px system-ui, "Segoe UI", Arial, sans-serif`;
+      const w = g.measureText(text).width;
+      if (w > S * 0.94) px = Math.floor((px * S * 0.94) / w);
+      g.font = `bold ${px}px system-ui, "Segoe UI", Arial, sans-serif`;
+      g.fillText(text, S / 2, S / 2 + px * 0.04);
+    } else if (shape === 'image') {
+      g.restore();
+      g.save();
+      const img = this.sticker.image;
+      if (img) {
+        const k = Math.min(S / img.width, S / img.height);
+        g.drawImage(img, (S - img.width * k) / 2, (S - img.height * k) / 2, img.width * k, img.height * k);
       }
-      case 'heart': {
-        g.beginPath();
-        g.moveTo(0, 0.9);
-        g.bezierCurveTo(-1.25, 0.05, -0.75, -1.05, 0, -0.42);
-        g.bezierCurveTo(0.75, -1.05, 1.25, 0.05, 0, 0.9);
-        g.fill();
-        break;
-      }
-      case 'circle':
-        g.beginPath();
-        g.arc(0, 0, 0.95, 0, Math.PI * 2);
-        g.fill();
-        break;
-      case 'ring':
-        g.beginPath();
-        g.arc(0, 0, 0.95, 0, Math.PI * 2);
-        g.arc(0, 0, 0.62, 0, Math.PI * 2, true);
-        g.fill();
-        break;
-      case 'bolt':
-        g.beginPath();
-        [[0.18, -0.98], [-0.55, 0.12], [-0.05, 0.12], [-0.22, 0.98], [0.58, -0.18], [0.07, -0.18], [0.32, -0.98]].forEach(([x, y]) => g.lineTo(x, y));
-        g.fill();
-        break;
-      case 'flower':
-        for (let i = 0; i < 6; i++) {
-          const a = (i * Math.PI) / 3;
-          g.beginPath();
-          g.ellipse(Math.cos(a) * 0.5, Math.sin(a) * 0.5, 0.45, 0.3, a, 0, Math.PI * 2);
-          g.fill();
-        }
-        g.beginPath();
-        g.arc(0, 0, 0.3, 0, Math.PI * 2);
-        g.fill();
-        break;
-      case 'triangle':
-        g.beginPath();
-        [[0, -0.95], [0.95, 0.75], [-0.95, 0.75]].forEach(([x, y]) => g.lineTo(x, y));
-        g.fill();
-        break;
-      case 'moon':
-        g.beginPath();
-        g.arc(0, 0, 0.95, 0, Math.PI * 2);
-        g.moveTo(0.38 + 0.75, -0.22);
-        g.arc(0.38, -0.22, 0.75, 0, Math.PI * 2, true);
-        g.fill('evenodd');
-        break;
-      case 'crown':
-        g.beginPath();
-        [[-0.95, 0.6], [-0.95, -0.55], [-0.5, -0.05], [0, -0.75], [0.5, -0.05], [0.95, -0.55], [0.95, 0.6]].forEach(([x, y]) => g.lineTo(x, y));
-        g.fill();
-        break;
-      case 'eye':
-        g.beginPath();
-        g.arc(0, 0, 0.95, 0, Math.PI * 2);
-        g.fillStyle = '#ffffff';
-        g.fill();
-        g.beginPath();
-        g.arc(0.12, 0.08, 0.5, 0, Math.PI * 2);
-        g.fillStyle = '#111111';
-        g.fill();
-        g.beginPath();
-        g.arc(0.3, -0.12, 0.13, 0, Math.PI * 2);
-        g.fillStyle = '#ffffff';
-        g.fill();
-        break;
-      case 'text': {
-        g.restore();
-        g.save();
-        const text = this.sticker.text || ' ';
-        g.textAlign = 'center';
-        g.textBaseline = 'middle';
-        let px = 400;
-        g.font = `bold ${px}px system-ui, "Segoe UI", Arial, sans-serif`;
-        const w = g.measureText(text).width;
-        if (w > S * 0.94) px = Math.floor((px * S * 0.94) / w);
-        g.font = `bold ${px}px system-ui, "Segoe UI", Arial, sans-serif`;
-        g.fillText(text, S / 2, S / 2 + px * 0.04);
-        break;
-      }
-      case 'image': {
-        g.restore();
-        g.save();
-        const img = this.sticker.image;
-        if (img) {
-          const k = Math.min(S / img.width, S / img.height);
-          g.drawImage(img, (S - img.width * k) / 2, (S - img.height * k) / 2, img.width * k, img.height * k);
-        }
-        break;
-      }
+    } else {
+      drawSticker(g, shape, this.sticker.text); // see stickers.js
     }
     g.restore();
-    // The eye keeps its own colours, like a picture.
     this.stampData = g.getImageData(0, 0, S, S).data;
-    this.stampTinted = shape !== 'image' && shape !== 'eye';
+    this.stampTinted = !OWN_COLOURS.has(shape); // the eye and pictures keep their colours
     if (this.stickerTex) this.stickerTex.needsUpdate = true;
   }
 
