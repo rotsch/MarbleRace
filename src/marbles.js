@@ -1,10 +1,17 @@
 import { MARBLE, COLORS } from './config.js';
 
-// Creates the marble rigid bodies. Rendering attaches meshes separately.
-export function createMarbles(RAPIER, world, spawnPoints, rng) {
+// The racers when nobody chose any: the first `count` plain colours.
+export function defaultEntries(count = MARBLE.count) {
+  return COLORS.slice(0, count).map((c) => ({ name: c.name, color: c.hex, design: null }));
+}
+
+// Creates the marble rigid bodies, one per entry ({ name, color, design };
+// design is the painted look, see designs.js, and only matters for
+// rendering). Rendering attaches meshes separately.
+export function createMarbles(RAPIER, world, spawnPoints, rng, entries = defaultEntries()) {
   const slots = rng.shuffle(spawnPoints.map((_, i) => i));
   const marbles = [];
-  for (let i = 0; i < MARBLE.count; i++) {
+  for (let i = 0; i < entries.length; i++) {
     const p = spawnPoints[slots[i]];
     const j = MARBLE.radius * 0.35;
     const x = p.x + rng.range(-j, j);
@@ -28,8 +35,9 @@ export function createMarbles(RAPIER, world, spawnPoints, rng) {
     const r = body.rotation();
     marbles.push({
       index: i,
-      name: COLORS[i].name,
-      color: COLORS[i].hex,
+      name: entries[i].name,
+      color: entries[i].color, // for dots in the UI
+      design: entries[i].design ?? null,
       body,
       collider,
       prev: { x: t.x, y: t.y, z: t.z, qx: r.x, qy: r.y, qz: r.z, qw: r.w },

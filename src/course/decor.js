@@ -32,7 +32,8 @@ function materials() {
     finishBanner: basic(bannerTexture('FINISH')),
     flag: basic(checkerTexture(4, 3)),
     line: decal(checkerTexture(12, 2)),
-    grid: [1, 2, 3, 4, 5, 6, 7, 8].map((n) => decal(gridBoxTexture(n))),
+    decal,
+    grid: [], // slot number -> decal material, made when first needed (see gridMaterial)
     lights: Array.from({ length: LIGHT_COUNT }, () => new THREE.MeshBasicMaterial({ color: LIGHT_OFF })),
   };
   return M;
@@ -82,6 +83,11 @@ function bannerTexture(text) {
   g.textBaseline = 'middle';
   g.fillText(text, 512, 102, 700);
   return texture(c);
+}
+
+// Decal material for grid slot n (1 = front left), made once.
+function gridMaterial(m, n) {
+  return (m.grid[n - 1] ??= m.decal(gridBoxTexture(n)));
 }
 
 // Painted grid slot: an open bracket with the slot number, on transparency.
@@ -173,7 +179,7 @@ function grandstand(ctx, g, side, x0, z0, z1, floorY, crowd) {
       const jitter = (crowd.rnd() - 0.5) * 0.03;
       crowd.seats.push({
         pos: framePoint(g, x + side * jitter, top + SPECTATOR.radius, z + jitter),
-        color: COLORS[Math.floor(crowd.rnd() * COLORS.length)].hex,
+        color: COLORS[Math.floor(crowd.rnd() * 8)].hex,
       });
     }
   }
@@ -199,7 +205,7 @@ export function dressStart(ctx, frames, railHeight, lineZ) {
     const row = Math.floor(i / 2), col = i % 2;
     const n = (rows - 1 - row) * 2 + (1 - col) + 1;
     const local = p.clone().sub(f0.pos);
-    floorDecal(ctx, f0, local.dot(f0.L), local.dot(f0.F), 0.25, 0.25, m.grid[n - 1]);
+    floorDecal(ctx, f0, local.dot(f0.L), local.dot(f0.F), 0.25, 0.25, gridMaterial(m, n));
   });
   floorDecal(ctx, f0, 0, lineZ, TRACK.width, 0.1, m.line);
   kerbs(ctx, frames, railHeight);

@@ -4,6 +4,7 @@ import { MARBLE } from './config.js';
 import { applyTrackTexture } from './trackTexture.js';
 import { NeonTheme } from './theme.js';
 import { setDecorLook } from './course/decor.js';
+import { colorDesign, marbleMaterial } from './designs.js';
 
 // Renderer, the boundless white space, lighting, marble meshes and the debug overlay.
 export class View {
@@ -84,8 +85,7 @@ export class View {
     if (this.courseGroup) this._disposeGroup(this.courseGroup);
     for (const m of this.marbleMeshes) {
       this.scene.remove(m);
-      m.material.map?.dispose();
-      m.material.dispose();
+      m.material.dispose(); // the design's texture is shared and stays
     }
     for (const mesh of this.shotMeshes?.values() ?? []) this.scene.remove(mesh);
     this.shotMeshes?.clear();
@@ -100,7 +100,7 @@ export class View {
       this.sphere = new THREE.SphereGeometry(MARBLE.radius, 40, 28);
     }
     this.marbleMeshes = race.marbles.map((m) => {
-      const mesh = new THREE.Mesh(this.sphere, this._marbleMaterial(m.color));
+      const mesh = new THREE.Mesh(this.sphere, this._marbleMaterial(m.design ?? m.color));
       this.scene.add(mesh);
       return mesh;
     });
@@ -168,32 +168,18 @@ export class View {
     group.traverse((o) => o.geometry?.dispose());
   }
 
-  // Glossy glass look, with a soft lighter swirl so rolling is visible.
-  _marbleMaterial(hex) {
-    const c = document.createElement('canvas');
-    c.width = 256;
-    c.height = 128;
-    const g = c.getContext('2d');
-    const base = new THREE.Color(hex);
-    g.fillStyle = `#${base.getHexString()}`;
-    g.fillRect(0, 0, 256, 128);
-    const light = base.clone().lerp(new THREE.Color(0xffffff), 0.35);
-    g.strokeStyle = `#${light.getHexString()}`;
-    g.lineWidth = 7;
-    for (const phase of [0]) {
-      g.beginPath();
-      for (let x = -8; x <= 264; x += 4) {
-        const y = 64 + Math.sin((x / 256) * Math.PI * 2 + phase) * 34;
-        x === -8 ? g.moveTo(x, y) : g.lineTo(x, y);
-      }
-      g.stroke();
-    }
-    const map = new THREE.CanvasTexture(c);
-    map.colorSpace = THREE.SRGBColorSpace;
-    return new THREE.MeshPhysicalMaterial({
-      map, roughness: 0.08, metalness: 0, clearcoat: 1, clearcoatRoughness: 0.03,
-      envMap: this.envMap, envMapIntensity: 0.9,
-    });
+  // Material for a marble design (see designs.js), or a plain colour: glossy
+  // glass with a soft lighter swirl so rolling is visible.
+  _marbleMaterial(design) {
+    return marbleMaterial(typeof design === 'number' ? colorDesign(design) : design, this.envMap);
+  }
+
+  // Give marble i another look (the race setup changed its design).
+  setMarbleDesign(i, design) {
+    const mesh = this.marbleMeshes[i];
+    if (!mesh) return;
+    mesh.material.dispose();
+    mesh.material = this._marbleMaterial(design);
   }
 
   // Interpolate marbles between the two latest physics states.

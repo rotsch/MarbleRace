@@ -20,7 +20,7 @@ export const PHYSICS = {
 };
 
 export const MARBLE = {
-  count: 8,
+  count: 8, // default number of racers (the race setup chooses 2 to MAX_MARBLES)
   radius: 0.008 * WORLD_SCALE,
   density: 2.5,
   restitution: 0.55,
@@ -63,6 +63,11 @@ export const RACE = {
   fallsBeforeSkip: 2, // after this many falls at one spot, put it back past the spot
 };
 
+// Most marbles one race can have; the start grid grows to fit them.
+export const MAX_MARBLES = 24;
+
+// Plain marble colours: the first eight are the classic racers, the rest
+// fill bigger fields (and are the plain designs in the race setup).
 export const COLORS = [
   { name: 'Red', hex: 0xe53935 },
   { name: 'Orange', hex: 0xfb8c00 },
@@ -72,4 +77,20 @@ export const COLORS = [
   { name: 'Blue', hex: 0x1e63e9 },
   { name: 'Purple', hex: 0x8e24aa },
   { name: 'Pink', hex: 0xec5fa4 },
+  { name: 'White', hex: 0xf4f4f4 },
+  { name: 'Black', hex: 0x262626 },
+  { name: 'Lime', hex: 0x9ccc28 },
+  { name: 'Teal', hex: 0x00897b },
+  { name: 'Brown', hex: 0x8d5a3b },
+  { name: 'Grey', hex: 0x9e9e9e },
+  { name: 'Navy', hex: 0x1a237e },
+  { name: 'Maroon', hex: 0x880e2f },
+  { name: 'Gold', hex: 0xd4a017 },
+  { name: 'Mint', hex: 0x7ee0b4 },
+  { name: 'Lavender', hex: 0xb39ddb },
+  { name: 'Coral', hex: 0xff7f61 },
+  { name: 'Sky', hex: 0x6ec6ff },
+  { name: 'Olive', hex: 0x7c8a2e },
+  { name: 'Magenta', hex: 0xd81b9b },
+  { name: 'Indigo', hex: 0x4b3cc9 },
 ];

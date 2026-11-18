@@ -1,6 +1,8 @@
 # Marble Race
 
-Eight glass marbles race down one long 3D course in an empty white room.
+Two to 24 glass marbles race down one long 3D course in an empty white room.
+Every racer has a name and a look: a plain colour or a design painted in the
+built-in marble paint editor.
 Three.js for rendering, Rapier for physics, Vite, plain JavaScript.
 
 ## Run
@@ -40,7 +42,10 @@ Node 18 or newer.
 | `Shift` | fly faster |
 | Speaker button / volume slider (bottom left), `N` | sound on / off and volume (remembered by the browser). All sounds are synthesised with Web Audio: rolling (louder and brighter with speed, silent in the air), hits on the track, glass clicks between marbles, boings on the rubber pads, start-light beeps, a bell per finisher with a cheering crowd and a fanfare for the winner, a crowd of babbling voices at the finish (it wakes as the leader nears the line and falls silent once the last marble is home), safety-net nudges and rescues, shots, clicks and pause. World sounds come from where they happen, heard from the camera |
 | `T` or Look menu | cycle the look: White (default) → Neon dusk (evening sky with a striped sun and stars, an endless glowing grid floor with light pulses, a rainbow track whose colour follows height, candy-striped floors, neon gantries and stands, low-poly shapes drifting around the course) → Picture mosaic (every picture in `textures/` as a random mosaic; skipped if the folder has none) |
+| Race setup (on the start line) | number of marbles (2 to 24; the start grid grows to fit them), each racer's name and design (plain colours, or painted designs from `marbles/`), ✎ paints a design for that racer, Shuffle designs, Defaults. Remembered in this browser. The Race setup button (right panel) or `R` goes back to the start line |
 | Start race (button) | the page opens with the marbles waiting on the start line; every start (this button, a second `R`, Restart, New seed, physics Apply) counts down 3, 2, 1 first |
+| Racers (left) | every racer as a slowly spinning 3D marble with its name, its current place (its final place once finished), and a ring on the leader |
+| `P` or Paint | marble paint editor (see below) |
 | Progress line (top) | every marble at its distance along the course; marbles further ahead are drawn over those behind; shows the leader (the winner once someone finishes) |
 | `G` or Edit track | track editor (see below): the race waits on the start line; click a piece to select it, drag the gizmo to move it (`1`) or turn it (`2`), snap sockets together, change its options, add / delete pieces, `Ctrl+Z` / `Ctrl+Y` undo / redo, `Del` deletes, `Esc` deselects; `3` shape (widen, raise / lower walls); Test race leaves the editor and starts a race on the edited course |
 | Physics panel | marble size, bounciness, grip and rolling resistance; track bounciness and grip; rubber pad bounciness. Apply restarts the race; values are remembered in this browser |
@@ -51,6 +56,63 @@ section on its own (`pegField`, `funnel`, `loop`, `halfPipe`, `splitter`,
 `valley`, `bigJump`, `classic` (the course before the newer pieces), and the newer pieces `stairs`, `bumpers`, `waves`,
 `splitter3`, `wallRide`, `railRun`, `chicane`, `skiJump`, `corkscrew`,
 `tunnelDrop`); `?course=default` ignores the course saved by the editor.
+
+## Marble paint editor
+
+`P`, Paint, or ✎ next to a racer in the race setup opens the paint editor:
+one big marble in the middle, tools on the left, colours and the design on
+the right. Left mouse paints; right mouse (or the Turn tool, or dragging
+beside the marble) turns it; the wheel zooms.
+
+| Tool | |
+|---|---|
+| Brush `B` | round brush; size, opacity and softness |
+| Spray `S` | spray paint: hold to fill the circle with dots |
+| Eraser `E` | removes paint, the base shows again |
+| Fill `F` | fills an area of about one colour (a stripe of the pattern, a painted shape) |
+| Ring `R` | a band right round the marble: drag across it (the band runs through both points), or click for one across the view; Size sets its width |
+| Sticker `T` | stamps a star, heart, circle, ring, lightning bolt, flower, crown, eye, text, or a picture of your own (Picture… loads any image), with size and rotation; a preview shows where it goes |
+| Pick colour `I` | takes the colour under the cursor |
+| Turn `H` | turns the marble |
+
+Symmetry repeats every stroke mirrored (left / right) or 2, 3, 4, 6 or 8 times
+around the marble. Undo / redo (`Ctrl+Z` / `Ctrl+Y`, 30 steps), `[` / `]`
+size, Clear paint, Spin (turns the marble slowly to look at it).
+
+Each design has a **base**, a colour with an optional pattern in a second
+colour (plain, swirl, stripes, beach ball, two halves, checker, spiral, dots),
+which can be changed at any time under the paint, and a **finish** (glossy,
+matte, metal, pearl).
+
+Paint goes onto the sphere itself, not onto the flat picture wrapped around
+it: a brush dab covers every texel within an angle of the point under the
+cursor, and stickers are projected from the marble's centre, so shapes keep
+their form everywhere, also at the poles and across the seam.
+
+**Saving and sharing.** Save writes `marbles/<name>.json` (under `npm run dev`
+or `npm run preview`); the design then appears in every racer's design menu.
+Put design files in `marbles/` (and commit them) to share them with everyone.
+Export downloads the design as a file; Import loads one; the menu below opens
+a saved design. A static build has the designs that were in `marbles/` when it
+was built; saving there keeps the design in the browser and downloads the file.
+
+A design file is JSON:
+
+```
+{
+  "kind": "marble-design", "version": 1, "name": "Bumblebee",
+  "finish": "glossy",                                   // glossy | matte | metal | pearl
+  "base": { "pattern": "stripes", "color": "#fdd835", "color2": "#1b1b1b" },
+  "paint": "data:image/png;base64,..."                  // or null
+}
+```
+
+`paint` is a 1024 x 512 PNG with transparency, wrapped around the marble the
+way three.js maps a sphere (longitude across, latitude down, the top row at
+the north pole). See `src/designs.js`.
+
+The samples in `marbles/` (Bumblebee, Lucky Seven, Beach Ball, Flower Power)
+were painted with the editor.
 
 ## Track editor
 
@@ -129,7 +191,7 @@ in place of the default: use Reset course in the editor, or
 
 The classic course, top to bottom, linked by sloped, curving track:
 
-1. **Start ramp**: 8 seeded spawn slots on a painted grid, under a gantry whose five lights count down and turn green on "Go!".
+1. **Start ramp**: a painted starting grid with two marbles per row, as many rows as the race has marbles (seeded slots), under a gantry whose five lights count down and turn green on "Go!". Up to four rows fit on the ramp as laid out; for more, the ramp reaches further back uphill, so the start line and the rest of the course stay where they are.
 2. **Peg field**: tilted Plinko board of cylinders.
 3. **Funnel**: marbles enter tangentially, circle, drop through the centre hole.
 4. **Loop-the-loop** after a steep drop, with a bypass (see below).
@@ -228,9 +290,14 @@ src/
   config.js            every tunable: WORLD_SCALE, marble material, track sizes, solver
   rng.js               seeded random numbers
   tracks.js            list / load / save the tracks in tracks/ (via the dev server, see vite.config.js)
+  designs.js           marble designs: base patterns, textures, finishes, the marbles/ folder
+  painter.js           marble paint editor
+  setup.js             race setup: number of marbles, names, designs
+  lineup.js            the racers down the left, spinning 3D marbles
   physics.js           world setup, fixed-timestep accumulator
   marbles.js           marble bodies and their interpolation state
-  race.js              spawn, ranking, finish sensor, safety net (no DOM, runs headless)
+  race.js              spawn, ranking, finish sensor, safety net (no DOM, runs headless);
+                       new Race(RAPIER, seed, materials, layout, entries) races the given entries
   render.js            renderer, boundless white space, lights, marble shadows, marble meshes, debug lines
   camera.js            follow camera, free fly camera, leader's view
   ui.js                overlay

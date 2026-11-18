@@ -26,6 +26,7 @@ export class CourseContext {
     this.cameraHints = [];
     this.zones = []; // see addZone
     this.spawn = null;
+    this.marbleCount = 8; // racers the start grid makes room for (set by Race)
     // Placed pieces (see pieces.js): id -> { id, type, name, group, entry,
     // ins, outs, path0, path1 }. Sockets: { pieceId, kind, index, pos, yaw, pitch, up }.
     this.pieces = new Map();

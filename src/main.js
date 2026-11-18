@@ -13,6 +13,9 @@ import { Editor, loadStoredCourse } from './editor.js';
 import { EditorPanel } from './editorPanel.js';
 import { defaultCourse } from './course/pieces.js';
 import { loadTrack } from './tracks.js';
+import { RaceSetup } from './setup.js';
+import { Lineup } from './lineup.js';
+import { Painter } from './painter.js';
 
 loadStored(); // physics values the player set last time
 
@@ -23,6 +26,46 @@ const view = new View(document.getElementById('scene'));
 const rig = new CameraRig(view.camera, view.renderer.domElement);
 const stepper = new FixedStepper();
 let race = null;
+const lineup = new Lineup(document.getElementById('lineup'));
+const seedValue = () => ui.seed.value.trim() || '1';
+
+// Race setup (number of marbles, names, designs), shown on the start line.
+const setup = new RaceSetup({
+  // A different number of marbles needs a different start grid: rebuild.
+  onCount: () => restart(seedValue(), false),
+  onEntry: (i) => {
+    const m = race?.marbles[i];
+    if (!m) return;
+    const e = setup.entries()[i];
+    m.name = e.name;
+    if (m.design !== e.design) {
+      m.design = e.design;
+      m.color = e.color;
+      view.setMarbleDesign(i, e.design);
+    }
+    ui.markerRace = null; // redraw the progress markers (colour, name)
+    lineup.refresh(i);
+  },
+  onPaint: (i) => openPainter(i),
+});
+await setup.init();
+
+// Paint editor. Opened for racer i (or for a new design with i = null);
+// saving gives that racer the design.
+const painter = new Painter({
+  onSaved: async (design, entry) => {
+    await setup.refreshLibrary();
+    if (entry !== null) await setup.setDesign(entry, `design:${design.name}`);
+    // Racers already wearing this design get the new version.
+    setup.list.forEach((e, i) => e.design === `design:${design.name}` && setup.onEntry(i));
+  },
+  onClose: () => lineup.layout(),
+});
+function openPainter(i = null) {
+  if (editor?.active) return;
+  if (phase !== 'ready') setPaused(true);
+  painter.open(i === null ? null : setup.design(i), i, i === null ? '' : setup.name(i));
+}
 // The course as data (see course/pieces.js): ?layout=... for one section on
 // its own, otherwise the course last edited in this browser (?course=default
 // ignores it), otherwise the original course.
@@ -120,7 +163,7 @@ function playRaceSounds() {
   // Safety net: nudges puff, rescues and zone resets bloop.
   while (heard.log < race.log.length) {
     const e = race.log[heard.log++];
-    const m = race.marbles.find((x) => x.name === e.marble);
+    const m = race.marbles[e.index];
     if (!m) continue;
     const t = m.body.translation();
     if (e.type === 'nudge') sound.nudge(t);
@@ -140,8 +183,9 @@ function playRaceSounds() {
 // countdown: false only for the very first race, which waits for Start.
 function restart(seed, countdown = true) {
   if (race) race.dispose();
-  race = new Race(RAPIER, seed, view.materials, course);
+  race = new Race(RAPIER, seed, view.materials, course, setup.entries());
   view.setRace(race);
+  lineup.setRace(race);
   stepper.accumulator = 0;
   rig.reset();
   povIndex = null;
@@ -249,6 +293,7 @@ function setEditing(on, test = false) {
     ui.setCamera('free', handlers);
   }
   editor.setActive(on);
+  lineup.setVisible(!on);
   if (!on) {
     if (test) {
       ui.setCamera('follow', handlers);
@@ -260,6 +305,21 @@ function setEditing(on, test = false) {
 document.getElementById('edit-track').addEventListener('click', (e) => {
   e.currentTarget.blur();
   setEditing(!editor.active);
+});
+// Race setup: back to the start line, where the setup shows.
+document.getElementById('open-setup').addEventListener('click', (e) => {
+  e.currentTarget.blur();
+  if (editor.active) setEditing(false);
+  restart(seedValue(), false);
+});
+document.getElementById('open-painter').addEventListener('click', (e) => {
+  e.currentTarget.blur();
+  openPainter(null);
+});
+window.addEventListener('keydown', (e) => {
+  const t = e.target;
+  if (t && (t.tagName === 'INPUT' || t.tagName === 'SELECT' || t.tagName === 'TEXTAREA')) return;
+  if ((e.key === 'p' || e.key === 'P') && !e.ctrlKey && !e.metaKey && !editor.active) openPainter(null);
 });
 
 ui.seed.value = params.get('seed') || '1';
@@ -299,6 +359,11 @@ let last = performance.now();
 function frame(now) {
   const frameDt = (now - last) / 1000;
   last = now;
+  if (painter.isOpen) {
+    // The paint editor covers the screen: leave the race as it is.
+    requestAnimationFrame(frame);
+    return;
+  }
   if (paused) {
     // Hold the countdown and the green light where they are.
     countdownEnd += frameDt * 1000;
@@ -374,6 +439,7 @@ function frame(now) {
   rig.update(Math.min(frameDt, 0.5), target, tangent, hint, ride);
   view.updateDebug(race.world);
   ui.update(race);
+  lineup.update(race, Math.min(frameDt, 0.1));
   view.render(rig.focus);
   sound.setListener(view.camera);
   requestAnimationFrame(frame);

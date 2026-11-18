@@ -10,6 +10,7 @@ const CAMERA_HINTS = {
 };
 const SPEEDS = [0.1, 0.25, 0.5, 0.75, 1, 1.5, 2, 3, 4];
 const hex = (c) => `#${c.toString(16).padStart(6, '0')}`;
+const esc = (t) => String(t).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
 export class UI {
   constructor(handlers) {
@@ -345,7 +346,7 @@ export class UI {
         (m, i) =>
           `<li class="${m.finished ? 'done' : ''}"><span class="pos">${i + 1}</span>` +
           `<span class="dot" style="background:${hex(m.color)}"></span>` +
-          `<span class="name">${m.name}</span>` +
+          `<span class="name">${esc(m.name)}</span>` +
           `<span class="time">${m.finished ? m.finishTime.toFixed(2) + ' s' : ''}</span></li>`
       )
       .join('');

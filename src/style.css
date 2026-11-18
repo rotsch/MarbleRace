@@ -6,7 +6,8 @@ body { font: 13px/1.4 system-ui, -apple-system, 'Segoe UI', sans-serif; color: #
   position: absolute; top: 14px; pointer-events: auto;
   background: rgba(255, 255, 255, 0.9); border: 1px solid #111; padding: 10px 12px;
 }
-#ranking { left: 14px; min-width: 150px; }
+#ranking { left: calc(24px + var(--lineup-w, 0px)); min-width: 150px; }
+#ui { --lineup-w: 0px; }
 #controls { right: 14px; width: 170px; display: flex; flex-direction: column; gap: 8px; }
 h2 { margin: 0 0 6px; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; }
 ol { list-style: none; margin: 0; padding: 0; }
@@ -33,7 +34,12 @@ button:hover { background: #111; color: #fff; }
 #tunables label.changed { font-weight: 600; }
 #physics .note { margin: 6px 0 0; color: #666; font-size: 11px; }
 /* Progress line: each marble at its distance along the course. */
-#progress { left: 50%; transform: translateX(-50%); width: min(520px, calc(100vw - 440px)); box-sizing: border-box; }
+/* Centred in the room between the ranking (left of it the lineup) and the controls. */
+#progress {
+  --l: calc(var(--lineup-w) + 214px); --r: 214px;
+  left: calc(var(--l) + (100vw - var(--l) - var(--r)) / 2); transform: translateX(-50%);
+  width: min(520px, calc(100vw - var(--l) - var(--r))); box-sizing: border-box;
+}
 #leader { display: flex; align-items: center; gap: 6px; justify-content: center; margin-bottom: 8px; }
 #leader .label { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 600; }
 #leader .dot { width: 11px; height: 11px; border-radius: 50%; border: 1px solid #111; display: inline-block; }
@@ -47,12 +53,52 @@ button:hover { background: #111; color: #fff; }
 }
 #progress .ends { display: flex; justify-content: space-between; margin-top: 3px; font-size: 10px; color: #666; }
 /* Start button and countdown, centred over the scene. */
-#start-overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
+#start-overlay {
+  position: absolute; inset: 0; display: flex; align-items: flex-end; justify-content: center;
+  padding: 0 214px 14px calc(var(--lineup-w) + 28px); box-sizing: border-box;
+}
 #start-overlay[hidden], #countdown[hidden] { display: none; }
 #start-race {
   flex: none; pointer-events: auto; font-size: 20px; font-weight: 600; letter-spacing: 0.04em;
-  padding: 14px 34px; border: 2px solid #111; background: rgba(255, 255, 255, 0.92);
+  padding: 10px 34px; border: 2px solid #111; background: #fff;
 }
+#start-race:hover { background: #111; color: #fff; }
+/* Race setup: number of marbles, each racer's name and design. */
+#setup {
+  position: relative; top: auto; width: min(660px, 100%); box-sizing: border-box;
+  display: flex; flex-direction: column; gap: 8px; max-height: calc(100vh - 150px);
+}
+#setup h2 { margin: 0; }
+.setup-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.setup-head .count { display: flex; align-items: center; gap: 4px; }
+.setup-head .count span { margin-right: 4px; font-weight: 600; }
+.setup-head .count button { flex: none; width: 28px; padding: 2px 0; font-size: 15px; line-height: 1; }
+.setup-head .count button:disabled { opacity: 0.35; cursor: default; background: #fff; color: #111; }
+#setup-count { width: 46px; font: inherit; font-weight: 600; text-align: center; padding: 3px 2px; border: 1px solid #111; }
+#setup-entries { display: grid; grid-template-columns: 1fr; gap: 4px 14px; overflow-y: auto; min-height: 0; max-height: 32vh; padding-right: 2px; }
+#setup-entries.wide { grid-template-columns: 1fr 1fr; }
+#setup .entry { display: flex; align-items: center; gap: 6px; min-width: 0; }
+#setup .entry .num { width: 16px; text-align: right; color: #666; font-variant-numeric: tabular-nums; flex: none; }
+#setup .entry .thumb { width: 22px; height: 22px; flex: none; }
+#setup .entry input { flex: 1 1 60px; min-width: 0; padding: 2px 5px; }
+#setup .entry select { flex: 1 1 70px; min-width: 0; font: inherit; border: 1px solid #111; background: #fff; padding: 1px 2px; }
+#setup .entry button { flex: none; padding: 1px 7px; }
+/* Racers down the left: spinning marbles drawn by one canvas over the cards. */
+#lineup {
+  left: 14px; padding: 8px; display: block;
+  --size: 96px; --cols: 1;
+}
+#lineup[hidden], body.editing #lineup, body.painting #ui { display: none; }
+#lineup .cards { display: grid; grid-template-columns: repeat(var(--cols), auto); gap: 6px 8px; }
+#lineup .card { display: flex; flex-direction: column; align-items: center; width: max(var(--size), 78px); }
+#lineup .head { display: flex; align-items: baseline; gap: 4px; max-width: 100%; height: 18px; font-size: 12px; white-space: nowrap; }
+#lineup .head .name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; }
+#lineup .head .place { color: #666; font-size: 11px; font-variant-numeric: tabular-nums; }
+#lineup .card.done .place { color: #111; font-weight: 700; }
+#lineup .card.first .place { color: #b8860b; }
+#lineup .slot { width: var(--size); height: var(--size); border-radius: 50%; box-sizing: border-box; border: 2px solid transparent; }
+#lineup .card.lead .slot { border-color: #111; }
+#lineup canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
 #countdown {
   position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
   font-size: 120px; font-weight: 700; line-height: 1; color: #111;
@@ -124,10 +170,53 @@ body.editing #ranking, body.editing #progress { display: none; }
 #editor .note { margin: 0; color: #666; font-size: 11px; }
 #editor .note .in { color: #16a34a; }
 #editor .note .out { color: #f97316; }
+/* Paint editor: tools left, the marble in the middle, colours and design right. */
+#painter {
+  position: fixed; inset: 0; display: grid; grid-template-columns: 230px 1fr 250px;
+  background: radial-gradient(circle at 50% 45%, #ffffff 0%, #eceef1 70%, #dfe2e6 100%);
+}
+#painter[hidden], #pt-sticker-box[hidden] { display: none; }
+.pt-panel {
+  display: flex; flex-direction: column; gap: 7px; padding: 12px; overflow-y: auto;
+  background: rgba(255, 255, 255, 0.92); border-right: 1px solid #111; box-sizing: border-box; height: 100vh;
+}
+.pt-right { border-right: none; border-left: 1px solid #111; }
+.pt-panel > * { flex: none; }
+.pt-panel .sub { margin: 4px 0 0; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 600; }
+.pt-panel .note { margin: 0; color: #666; font-size: 11px; }
+.pt-panel .note.bad { color: #b91c1c; }
+.pt-panel select { font: inherit; border: 1px solid #111; background: #fff; }
+.pt-panel label span { float: right; color: #444; font-variant-numeric: tabular-nums; }
+#pt-tools { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+#pt-tools button { text-align: left; display: flex; justify-content: space-between; align-items: center; }
+#pt-tools button.on { background: #111; color: #fff; }
+#pt-tools kbd { font: 10px/1 system-ui, sans-serif; color: #888; }
+#pt-tools button.on kbd { color: #bbb; }
+#pt-tool-hint { min-height: 30px; }
+#pt-sticker-box { display: flex; flex-direction: column; gap: 6px; border: 1px solid #ccc; padding: 6px 8px; }
+.pt-view { position: relative; min-width: 0; }
+#pt-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+.colour-row { align-items: center; }
+#pt-color { width: 54px; height: 34px; padding: 0; border: 1px solid #111; background: #fff; flex: none; }
+#pt-recent { display: flex; flex-wrap: wrap; gap: 3px; }
+#pt-swatches { display: grid; grid-template-columns: repeat(8, 1fr); gap: 3px; }
+.pt-panel button.swatch { flex: none; width: 100%; aspect-ratio: 1; min-width: 14px; padding: 0; border: 1px solid #111; }
+#pt-recent .swatch { width: 18px; }
+.pt-panel button.swatch:hover { outline: 2px solid #111; outline-offset: 1px; }
+.base-row { align-items: flex-end; }
+.base-row label { flex: 1; font-size: 11px; }
+.base-row input[type='color'] { width: 100%; height: 26px; padding: 0; border: 1px solid #111; background: #fff; }
+.base-row button { flex: none; padding: 3px 6px; }
+.pt-panel button.primary, #controls button.primary { font-weight: 600; border-width: 2px; }
+#pt-name { width: 100%; box-sizing: border-box; }
 @keyframes pop { from { transform: translate(-50%, -50%) scale(1.5); opacity: 0.3; } }
 @media (max-width: 900px) {
   #progress { left: 14px; right: 14px; width: auto; transform: none; }
   #ranking, #controls { top: 104px; }
+  #lineup { display: none; }
+  #ranking { left: 14px; }
+  #start-overlay { padding: 0 14px 14px; }
+  #painter { grid-template-columns: 190px 1fr 210px; }
 }
 @media (max-width: 560px) {
   #controls { top: auto; bottom: 14px; max-height: 50vh; }

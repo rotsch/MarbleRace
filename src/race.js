@@ -3,7 +3,7 @@ import { createRng } from './rng.js';
 import { createWorld, addRoomFloor } from './physics.js';
 import { CourseContext } from './course/context.js';
 import { buildCourse } from './course/course.js';
-import { createMarbles, snapshot } from './marbles.js';
+import { createMarbles, defaultEntries, snapshot } from './marbles.js';
 
 const MAX_SHOTS = 80; // the oldest shot marble goes when another is fired
 // Smallest velocity change in one step that counts as a hit (units/s). Rolling
@@ -13,16 +13,19 @@ const IMPACT_MIN = 1.4;
 // One race: world + course + marbles + ranking. No DOM or rendering in here,
 // so it also runs headless (scripts/sim.mjs).
 export class Race {
-  constructor(RAPIER, seed, materials = null, layout = 'full') { // layout: name or course data
+  // layout: name or course data. entries: the racers, [{ name, color,
+  // design }] (see marbles.js); the start grid is built for that many.
+  constructor(RAPIER, seed, materials = null, layout = 'full', entries = defaultEntries()) {
     this.RAPIER = RAPIER;
     this.seed = seed;
     this.world = createWorld(RAPIER);
     this.events = new RAPIER.EventQueue(true);
     addRoomFloor(RAPIER, this.world);
     this.course = new CourseContext(RAPIER, this.world, materials);
+    this.course.marbleCount = entries.length;
     buildCourse(this.course, layout);
     this.course.finalize(RACE.floorClearance);
-    this.marbles = createMarbles(RAPIER, this.world, this.course.spawn, createRng(seed));
+    this.marbles = createMarbles(RAPIER, this.world, this.course.spawn, createRng(seed), entries);
     this.byHandle = new Map(this.marbles.map((m) => [m.collider.handle, m]));
     this.time = 0;
     this.steps = 0;
@@ -209,7 +212,7 @@ export class Race {
     this._place(m, tries === 1 ? z.restart : z.skip);
     m.zoneTime = 0;
     const p = this.course.path[m.pathIndex];
-    this.log.push({ time: this.time, marble: m.name, type: tries === 1 ? 'back to start' : 'skipped', section: p.section, s: p.s });
+    this.log.push({ time: this.time, marble: m.name, index: m.index, type: tries === 1 ? 'back to start' : 'skipped', section: p.section, s: p.s });
     return true;
   }
 
@@ -238,7 +241,7 @@ export class Race {
     const p = this.course.path[m.pathIndex];
     const k = m.body.mass() * 3;
     m.body.applyImpulse({ x: p.tangent.x * k, y: k * 0.6, z: p.tangent.z * k }, true);
-    this.log.push({ time: this.time, marble: m.name, type: 'nudge', section: p.section });
+    this.log.push({ time: this.time, marble: m.name, index: m.index, type: 'nudge', section: p.section });
   }
 
   // Puts a marble back on the centre line, only ever on a point with track
@@ -283,7 +286,7 @@ export class Race {
     this._place(m, i);
     m.rescues++;
     const p = path[i];
-    this.log.push({ time: this.time, marble: m.name, type: 'rescue', why, section: p.section, s: p.s });
+    this.log.push({ time: this.time, marble: m.name, index: m.index, type: 'rescue', why, section: p.section, s: p.s });
   }
 
   // Put a marble at rest just above centre-line point i.
