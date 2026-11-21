@@ -4,6 +4,7 @@ import { createWorld, addRoomFloor } from './physics.js';
 import { CourseContext } from './course/context.js';
 import { buildCourse } from './course/course.js';
 import { createMarbles, defaultEntries, snapshot } from './marbles.js';
+import { Endless } from './course/endless.js';
 
 const MAX_SHOTS = 80; // the oldest shot marble goes when another is fired
 // Smallest velocity change in one step that counts as a hit (units/s). Rolling
@@ -13,17 +14,25 @@ const IMPACT_MIN = 1.4;
 // One race: world + course + marbles + ranking. No DOM or rendering in here,
 // so it also runs headless (scripts/sim.mjs).
 export class Race {
-  // layout: name or course data. entries: the racers, [{ name, color,
-  // design }] (see marbles.js); the start grid is built for that many.
+  // layout: name or course data, or { endless: { duration } } for a timed
+  // race on a course that builds itself (see course/endless.js). entries:
+  // the racers, [{ name, color, design }] (see marbles.js); the start grid
+  // is built for that many.
   constructor(RAPIER, seed, materials = null, layout = 'full', entries = defaultEntries()) {
     this.RAPIER = RAPIER;
     this.seed = seed;
     this.world = createWorld(RAPIER);
     this.events = new RAPIER.EventQueue(true);
-    addRoomFloor(RAPIER, this.world);
+    const endless = layout?.endless ?? null;
+    // An endless course keeps going down: no room floor to land on.
+    if (!endless) addRoomFloor(RAPIER, this.world);
     this.course = new CourseContext(RAPIER, this.world, materials);
     this.course.marbleCount = entries.length;
-    buildCourse(this.course, layout);
+    this.endless = null;
+    if (endless) {
+      this.course.streaming = true;
+      this.endless = new Endless(this, { duration: endless.duration, seed });
+    } else buildCourse(this.course, layout);
     this.course.finalize(RACE.floorClearance);
     this.marbles = createMarbles(RAPIER, this.world, this.course.spawn, createRng(seed), entries);
     this.byHandle = new Map(this.marbles.map((m) => [m.collider.handle, m]));
@@ -70,8 +79,13 @@ export class Race {
   _updateShots() {
     for (const shot of [...this.shots.values()]) {
       const t = shot.body.translation();
-      // Resting on (or below) the room floor, or far out of the room.
-      if (shot.gone || t.y < MARBLE.radius * 1.5 || Math.abs(t.x) > 200 || Math.abs(t.z) > 200) this._removeShot(shot);
+      // Resting on (or below) the room floor, or far out of the room. With
+      // no floor (endless): far below or away from the leader.
+      const lead = this.endless && this.leader();
+      const out = lead
+        ? Math.hypot(t.x - lead.curr.x, t.z - lead.curr.z) > 200 || t.y < lead.curr.y - 60
+        : t.y < MARBLE.radius * 1.5 || Math.abs(t.x) > 200 || Math.abs(t.z) > 200;
+      if (shot.gone || out) this._removeShot(shot);
     }
   }
 
@@ -117,6 +131,32 @@ export class Race {
       if (!m.finished || this.impacts) this._touch(m);
       if (!m.finished) this._watchdog(m, this._zones(m));
     }
+    this.endless?.update();
+  }
+
+  // Endless: the world moved by `offset` (see Endless._rebase). Marbles and
+  // shots move with it and keep their motion.
+  shiftBodies(offset) {
+    for (const m of this.marbles) {
+      const t = m.body.translation();
+      m.body.setTranslation({ x: t.x + offset.x, y: t.y + offset.y, z: t.z + offset.z }, true);
+      for (const s of [m.prev, m.curr, m.anchor]) {
+        s.x += offset.x; s.y += offset.y; s.z += offset.z;
+      }
+    }
+    for (const shot of this.shots.values()) {
+      const t = shot.body.translation();
+      shot.body.setTranslation({ x: t.x + offset.x, y: t.y + offset.y, z: t.z + offset.z }, true);
+    }
+  }
+
+  // Endless: a marble still on track that is about to be taken away goes
+  // to path index i further on.
+  moveUp(m, i) {
+    this._place(m, i);
+    m.rescues++;
+    const p = this.course.path[i];
+    this.log.push({ time: this.time, marble: m.name, index: m.index, type: 'rescue', why: 'left behind', section: p.section, s: p.s });
   }
 
   // Nearest centre-line point, searched in a window around the last one.
@@ -141,7 +181,8 @@ export class Race {
       }
     }
     if (bestD > 9 && this.steps % 30 === 0) {
-      for (let i = 0; i < path.length; i += 2) {
+      for (let i = this.course.liveFrom; i < path.length; i += 2) {
+        if (path[i].gone) continue;
         const d = d2(i);
         if (d < bestD) { bestD = d; best = i; }
       }
@@ -154,10 +195,10 @@ export class Race {
   // Remember where on the centre line a marble last touched the course
   // (any course collider; other marbles do not count).
   _touch(m) {
-    const course = this.course.body.handle;
+    const course = this.course;
     let touching = false;
     this.world.contactPairsWith(m.collider, (other) => {
-      if (touching || other.parent()?.handle !== course) return;
+      if (touching || !course.isCourse(other.parent()?.handle)) return;
       this.world.contactPair(m.collider, other, (manifold) => {
         for (let k = 0; k < manifold.numContacts(); k++) if (manifold.contactDist(k) < 0.01) touching = true;
       });
@@ -221,7 +262,9 @@ export class Race {
   // In a zone only the fall check applies; the zone's own timer does the rest.
   _watchdog(m, inZone = false) {
     const c = m.curr;
-    if (c.y < MARBLE.radius * 2.5) return this._rescue(m, 'fell');
+    // Fell: onto the room floor, or (endless, no floor) well below the track.
+    const floor = this.endless ? this.course.path[m.lastTouch ?? m.pathIndex].pos.y - 4 : MARBLE.radius * 2.5;
+    if (c.y < floor) return this._rescue(m, 'fell');
     const a = m.anchor;
     if (inZone) {
       a.x = c.x; a.y = c.y; a.z = c.z;
@@ -253,7 +296,10 @@ export class Race {
   _rescue(m, why) {
     const path = this.course.path;
     const course = this.course;
-    const capS = path[course.finishIndex - 8].s; // never drop a marble past the finish line
+    // Never drop a marble past the finish line (endless, before the finish
+    // is built: not onto the very end of the track laid so far).
+    const capIndex = course.finishIndex != null ? course.finishIndex - 8 : course.path.length - 9;
+    const capS = path[capIndex].s;
     const safe = (i) => path[i].solid && path[i].up.y > 0.6; // up to ~53 deg slope
     // Walk along the course (following links between pieces) to the first
     // safe point at least `dist` further on, stopping short of the finish.
@@ -264,7 +310,7 @@ export class Race {
         if (j === i) break;
         i = j;
       }
-      return path[i].s < capS ? i : course.finishIndex - 8;
+      return path[i].s < capS ? i : capIndex;
     };
     let i;
     if (why === 'fell') {

@@ -14,7 +14,10 @@ const arg = (name, def) => {
   return i < 0 ? def : process.argv[i + 1] ?? true;
 };
 const seeds = Number(arg('seeds', 10));
-const maxTime = Number(arg('max', 240));
+// --endless <seconds>: endless mode, a course that builds itself for a race
+// of about that long (see src/course/endless.js).
+const endlessTime = arg('endless', null);
+const maxTime = Number(arg('max', endlessTime ? Number(endlessTime) + 180 : 240));
 const verbose = process.argv.includes('--verbose');
 const quiet = process.argv.includes('--quiet');
 const only = arg('seed', null);
@@ -22,17 +25,25 @@ const only = arg('seed', null);
 // --track: a track saved in the tracks folder, by name.
 const track = arg('track', null);
 const courseFile = track ? new URL(`../tracks/${track}.json`, import.meta.url) : arg('course', null);
-const layout = courseFile ? JSON.parse(readFileSync(courseFile, 'utf8')) : arg('layout', 'full');
+const layout = endlessTime
+  ? { endless: { duration: Number(endlessTime) } }
+  : courseFile ? JSON.parse(readFileSync(courseFile, 'utf8')) : arg('layout', 'full');
 
 await initPhysics(RAPIER);
 
 function run(seed) {
   const race = new Race(RAPIER, seed, null, layout);
+  race.endless?.fill();
   const sectionTime = {};
   const speedSum = {}, speedN = {}, speedMax = {};
-  let maxSpeed = 0;
+  let maxSpeed = 0, maxCoord = 0, maxLiveBodies = 0;
   while (!race.finished && race.time < maxTime) {
     race.step();
+    if (race.endless) {
+      race.endless.events.length = 0;
+      for (const m of race.marbles) maxCoord = Math.max(maxCoord, Math.abs(m.curr.x), Math.abs(m.curr.y), Math.abs(m.curr.z));
+      maxLiveBodies = Math.max(maxLiveBodies, race.course.courseBodies.size);
+    }
     for (const m of race.marbles) {
       if (m.finished) continue;
       const s = race.course.path[m.pathIndex].section;
@@ -58,6 +69,7 @@ function run(seed) {
     sections: race.course.sections,
     counters: Object.fromEntries(Object.entries(race.counters).map(([k, v]) => [k, v.size])),
     length: race.course.length,
+    endless: race.endless && { ...race.endless.stats, maxCoord: +maxCoord.toFixed(1), maxLiveBodies, finishBuilt: race.endless.done },
   };
   race.dispose();
   return out;
@@ -93,6 +105,7 @@ for (const seed of list) {
       `rescues ${r.log.filter((e) => e.type === 'rescue').length}` +
       (r.unfinished.length ? `  stuck: ${r.unfinished.join(', ')}` : '')
   );
+  if (r.endless) console.log('    endless:', JSON.stringify(r.endless));
   if (verbose) console.log('   ', r.order.join(' > '), r.log);
 }
 
@@ -124,10 +137,14 @@ function energyAudit(seed, keep) {
   let prev = energy(), total = 0;
   while (!m.finished && race.time < maxTime) {
     const incidents = race.log.length;
+    const rebases = race.endless?.stats.rebases;
     race.step();
+    if (race.endless) race.endless.events.length = 0;
     const e = energy(), d = e - prev;
     prev = e;
-    if (race.log.length > incidents || d <= 0.5) continue; // safety-net moves are not physics
+    // Safety-net moves are not physics, nor is the endless course shifting
+    // everything (height included) back towards the origin.
+    if (race.log.length > incidents || race.endless?.stats.rebases !== rebases || d <= 0.5) continue;
     const s = race.course.path[m.pathIndex].section;
     bySection[s] = (bySection[s] || 0) + d;
     total += d;

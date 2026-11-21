@@ -20,8 +20,11 @@ function materials() {
   if (M) return M;
   const std = (color) => new THREE.MeshStandardMaterial({ color, roughness: 0.8, metalness: 0 });
   const basic = (map, extra = {}) => new THREE.MeshBasicMaterial({ map, side: THREE.DoubleSide, ...extra });
-  const decal = (map) =>
-    basic(map, { transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 });
+  // Painted on the track: lit like the track, so it darkens in its shadows.
+  const decal = (map) => new THREE.MeshStandardMaterial({
+    map, roughness: 0.95, metalness: 0, transparent: true, depthWrite: false,
+    polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4,
+  });
   M = {
     frame: std(0x2a2a2a),
     white: std(0xffffff),
@@ -119,7 +122,9 @@ const box = (w, h, d) => new THREE.BoxGeometry(w, h, d);
 // forward, so it reads the right way round from a camera following the race.
 function floorDecal(ctx, f, x, z, w, d, material) {
   const geo = new THREE.PlaneGeometry(w, d).rotateX(-Math.PI / 2).rotateY(Math.PI);
-  return ctx.addDecor(geo, framePoint(f, x, 0.004, z), frameQuat(f), { material });
+  const mesh = ctx.addDecor(geo, framePoint(f, x, 0.004, z), frameQuat(f), { material });
+  if (mesh) mesh.castShadow = false; // paint: it shades nothing
+  return mesh;
 }
 
 // Two pillars and a beam carrying a banner on both faces. Returns the level
@@ -282,5 +287,7 @@ function addSpectators(ctx, seats) {
     mesh.setColorAt(i, color.setHex(s.color));
   });
   mesh.userData.decor = true;
+  mesh.castShadow = mesh.receiveShadow = true;
+  mesh.layers.set(1); // decoration layer (see CourseContext.addDecor)
   ctx.addObject(mesh);
 }

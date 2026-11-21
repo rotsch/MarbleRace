@@ -20,6 +20,17 @@
               <button id="setup-plus" title="One marble more" aria-label="One marble more">+</button>
             </div>
           </div>
+          <div class="setup-mode">
+            <span>Mode</span>
+            <div class="seg" role="group" aria-label="Race mode">
+              <button id="mode-track" title="Race the track (the one from the track editor)">Track</button>
+              <button id="mode-endless" title="Random pieces drop in ahead of the leader until the time is up, then the finish">Endless</button>
+            </div>
+            <span id="mode-time" class="time-box">
+              <input id="setup-minutes" type="number" min="0.5" max="60" step="0.5" aria-label="Race length in minutes" />
+              <span>min</span>
+            </span>
+          </div>
           <div id="setup-entries"></div>
           <div class="row">
             <button id="setup-shuffle" title="Give every racer a different design, at random">Shuffle designs</button>
@@ -35,9 +46,10 @@
       <div id="paused" hidden>❚❚ Paused <span>Space to resume</span></div>
       <section id="progress" class="panel">
         <div id="leader"><span class="label">Leading</span> <span class="dot"></span> <span class="name">–</span></div>
-        <div id="progress-line"><div id="progress-markers"></div></div>
+        <div id="progress-line"><div class="dots head"></div><div class="dots tail"></div><div id="progress-markers"></div></div>
         <div class="ends"><span>Start</span><span>Finish</span></div>
       </section>
+      <section id="fps" class="panel" hidden aria-live="off"></section>
       <section id="sound" class="panel">
         <button id="sound-toggle" title="Sound on / off (N)" aria-label="Sound on / off">
           <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
@@ -152,6 +164,11 @@
           <button id="open-setup" title="Back to the start line: choose marbles, names and designs">Race setup</button>
           <button id="open-painter" title="Paint marble designs (P)">Paint (P)</button>
         </div>
+        <details id="graphics">
+          <summary>Graphics</summary>
+          <div id="graphics-options"></div>
+          <p class="note" id="graphics-note">Lower settings run smoother on laptops and computers without a dedicated graphics card.</p>
+        </details>
         <details id="physics">
           <summary>Physics</summary>
           <div id="tunables"></div>

@@ -1,4 +1,5 @@
 import { TUNABLES, DEFAULTS, applyValues, currentValues, store } from './tuning.js';
+import { OPTIONS, PRESETS, presetOf, storeGraphics } from './graphics.js';
 
 // Minimal DOM overlay: ranking / results, seed, restart, speed, toggles,
 // physics settings.
@@ -8,6 +9,11 @@ const CAMERA_HINTS = {
   free: 'Free camera: drag to steer (or click to lock the mouse, Esc releases), wheel or pinch to fly, WASD move, Q/E up/down, Shift faster.',
   pov: "Leader's view: riding on the leading marble.",
 };
+// Endless-mode progress line.
+const DOTS = 4; // % drawn dotted at an open end
+const PAD = 1.5; // % kept free inside the solid line at each end
+const MIN_SPAN = 3; // units the line covers at least
+const EASE = 2.5; // per second: how fast the line follows the field
 const SPEEDS = [0.1, 0.25, 0.5, 0.75, 1, 1.5, 2, 3, 4];
 const hex = (c) => `#${c.toString(16).padStart(6, '0')}`;
 const esc = (t) => String(t).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -25,6 +31,7 @@ export class UI {
     this.hint = $('hint');
     this.leader = $('leader');
     this.markers = $('progress-markers');
+    this.line = $('progress-line');
     this.markerRace = null;
     this.startOverlay = $('start-overlay');
     this.countdown = $('countdown');
@@ -188,6 +195,81 @@ export class UI {
     }
   }
 
+  // Graphics section: a preset menu plus every option on its own.
+  // settings: from loadGraphics(); onChange(settings) applies them.
+  // antialiasAtStart: what the renderer was made with (it changes on reload).
+  bindGraphics(settings, onChange, antialiasAtStart) {
+    const box = $('graphics-options');
+    const note = $('graphics-note');
+    const baseNote = note.textContent;
+    const selects = {};
+    const checks = {};
+    const select = (key, label, title) => {
+      const el = document.createElement('select');
+      for (const [v, text] of OPTIONS[key]) el.add(new Option(text, v));
+      const l = document.createElement('label');
+      if (title) l.title = title;
+      if (key === 'preset') l.className = 'preset';
+      l.append(label, el);
+      box.append(l);
+      selects[key] = el;
+      el.addEventListener('change', () => {
+        if (key === 'preset') {
+          if (el.value === 'custom') return;
+          Object.assign(settings, PRESETS[el.value]);
+        } else settings[key] = el.value;
+        apply();
+        el.blur();
+      });
+    };
+    const check = (key, label, title) => {
+      const el = document.createElement('input');
+      el.type = 'checkbox';
+      const l = document.createElement('label');
+      l.className = 'check';
+      if (title) l.title = title;
+      l.append(el, ` ${label}`);
+      box.append(l);
+      checks[key] = el;
+      el.addEventListener('change', () => {
+        settings[key] = el.checked;
+        apply();
+        el.blur();
+      });
+    };
+    select('preset', 'Quality');
+    select('shadows', 'Shadows', 'Sun shadows of the track, decoration and marbles. "Under marbles only" keeps just the soft spot under each marble, which costs almost nothing.');
+    select('ao', 'Ambient occlusion', 'Darkens corners and seams, where the rails meet the floor. An extra pass over the whole picture: costly on weak graphics.');
+    select('tone', 'Tone mapping', 'How bright light turns into screen colours. Filmic and Natural show soft shading from light to dark instead of flat white.');
+    select('reflections', 'Reflections', 'What glossy marbles mirror: a neutral studio, or the theme\'s own sky (Neon dusk, ITSENSE).');
+    select('resolution', 'Resolution', 'Pixels drawn, compared with the screen. Lower is much faster and a little blurrier.');
+    select('marbles', 'Marble detail', 'Rounder marbles or fewer triangles.');
+    check('antialias', 'Smooth edges (antialiasing)', 'Takes effect after reloading the page.');
+    check('decorations', 'Decoration', 'Start and finish gantries, grandstands and spectators.');
+    check('dust', 'Dust');
+    check('fps', 'Show frame rate');
+    const show = () => {
+      for (const [k, el] of Object.entries(selects)) el.value = k === 'preset' ? presetOf(settings) : settings[k];
+      for (const [k, el] of Object.entries(checks)) el.checked = settings[k];
+      note.textContent = settings.antialias !== antialiasAtStart
+        ? 'Smooth edges changes when the page is reloaded.'
+        : baseNote;
+    };
+    const apply = () => {
+      storeGraphics(settings);
+      onChange(settings);
+      show();
+    };
+    show();
+  }
+
+  // Frames per second, shown when the graphics settings ask for it.
+  showFps(on, fps = null) {
+    const el = $('fps');
+    el.hidden = !on;
+    if (on && fps !== null) el.textContent = `${Math.round(fps)} fps`;
+  }
+
   // Speaker button (mute on/off, also N) and volume slider.
   bindSound(sound) {
     const box = $('sound');
@@ -336,12 +418,43 @@ export class UI {
       );
     }
     const course = race.course;
-    const length = course.path[course.finishIndex ?? course.path.length - 1].s;
+    const finishS = course.finishIndex != null ? course.path[course.finishIndex].s : null;
+    let s0 = 0, s1, a = 0, b = 100, pad = 0;
+    const ends = race.endless?.openEnds;
+    if (ends) {
+      // Endless mode: the line spans the field, from the last marble (or the
+      // start while it is still there) to the leader (or the finish once it
+      // is built), eased so it glides; dotted ends stand for more track.
+      const racing = race.marbles.filter((m) => !m.finished);
+      let lo = 0, hi = 0;
+      if (racing.length) {
+        lo = Math.min(...racing.map((m) => m.progress));
+        hi = Math.max(...racing.map((m) => m.progress));
+      }
+      let t0 = ends.before ? lo : 0;
+      let t1 = ends.after || finishS == null ? hi : finishS;
+      t1 = Math.max(t1, t0 + MIN_SPAN);
+      const now = performance.now();
+      const fresh = !this.span || this.span.race !== race;
+      const k = fresh ? 1 : 1 - Math.exp(-Math.min(0.25, (now - this.span.at) / 1000) * EASE);
+      const prev = fresh ? { s0: t0, s1: t1 } : this.span;
+      this.span = { race, at: now, s0: prev.s0 + (t0 - prev.s0) * k, s1: prev.s1 + (t1 - prev.s1) * k };
+      ({ s0, s1 } = this.span);
+      if (ends.before) a = DOTS;
+      if (ends.after) b = 100 - DOTS;
+      pad = PAD;
+    } else {
+      s1 = finishS ?? course.path[course.path.length - 1].s;
+    }
+    this.line.classList.toggle('more-before', a > 0);
+    this.line.classList.toggle('more-after', b < 100);
+    this.line.style.setProperty('--a', `${a}%`);
+    this.line.style.setProperty('--b', `${b}%`);
     const els = this.markers.children;
     ranking.forEach((m, rank) => {
-      const f = m.finished ? 1 : Math.min(1, Math.max(0, m.progress / length));
+      const f = m.finished ? 1 : Math.min(1, Math.max(0, (m.progress - s0) / Math.max(1e-6, s1 - s0)));
       const el = els[m.index];
-      el.style.left = `${(f * 100).toFixed(2)}%`;
+      el.style.left = `${(a + pad + f * (b - a - 2 * pad)).toFixed(2)}%`;
       el.style.zIndex = String(ranking.length - rank);
     });
     const lead = ranking[0];
@@ -355,7 +468,13 @@ export class UI {
     const ranking = race.ranking();
     this._updateProgress(race, ranking);
     this.title.textContent = done ? 'Results' : 'Ranking';
-    this.clock.textContent = done ? `Race over · seed ${race.seed}` : `${race.time.toFixed(2)} s`;
+    let clock = done ? `Race over · seed ${race.seed}` : `${race.time.toFixed(2)} s`;
+    // Endless mode: the time left until the finish is due, then that it is coming.
+    if (race.endless && !done) {
+      const left = Math.max(0, race.endless.duration - race.time);
+      clock += race.endless.done ? ' · finish ahead' : ` · ${Math.floor(left / 60)}:${String(Math.floor(left % 60)).padStart(2, '0')} left`;
+    }
+    this.clock.textContent = clock;
     const html = ranking
       .map(
         (m, i) =>

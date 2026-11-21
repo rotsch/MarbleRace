@@ -23,6 +23,49 @@ npm run physics-check    # single-marble rolling / bounce / collision checks
 
 Node 18 or newer.
 
+## Modes
+
+The race setup (on the start line) has a **Mode** switch:
+
+- **Track**: the course from the track editor (or `?track=` / `?layout=`).
+- **Endless**: a timed race on a course that builds itself. Set the length in
+  minutes; random pieces drop in ahead of the leader until the time is nearly
+  up, then the finish comes. `?mode=endless&minutes=5` starts in this mode.
+
+How the endless course works (`src/course/endless.js`):
+
+- **No rules**: any piece type can follow any other. The fork always comes
+  with two routes and a merge, dropped in as one unit. The bottleneck is kept
+  out of the first ten units, while the pack is still bunched up.
+- **Overlaps**: a new piece that would come within its own and a live piece's
+  footprint of track still on screen (less than 1 unit above or below it) is
+  taken back and another random piece is tried; after 6 tries a plain
+  18° drop goes in.
+- **Window**: about 20 units exist at a time. When the leader is less than
+  10 units from the end, another is added; a unit goes once every marble
+  still racing is past it (more than 40 live: stragglers are moved up). Only
+  the start piece and a run-in are there at once; the rest of the opening
+  window drops in on the start screen, one piece every 0.15 s.
+- **Finish timing**: the finish is added as soon as the track already laid
+  ahead of the leader is as long as the leader will roll in the time left
+  (its average speed so far, about 6 units/s before there is a measurement).
+  The winner finishes within about 10% of the set time.
+- **Drop-in**: new pieces fade in 6 units above their place, fall fast, slow
+  down, touch the track with a puff of dust at the seam (`src/dust.js`) and a
+  soft thud, and settle (`src/dropIn.js`). Only the meshes move: the
+  colliders are in place from the start. Removed pieces sink and fade out.
+- **Floating origin**: the course only goes down, so when the leader is more
+  than 60 units from (0, 0, 0) everything (every piece's body and meshes, the
+  centre line, marbles, shots, camera, dust) is moved back so the leader's
+  piece starts at the origin, between two physics steps. Shaders that colour
+  by world position subtract the total shift (`src/worldOrigin.js`), so
+  nothing changes on screen. The themes' ground follows the track down.
+- Every piece has a fixed rigid body of its own (`CourseContext.streaming`),
+  so it can be removed and moved; the centre line is never trimmed, so path
+  indices keep their meaning.
+
+The track editor is off in endless mode.
+
 ## Controls
 
 | | |
@@ -52,6 +95,7 @@ Node 18 or newer.
 | `P` or Paint | marble paint editor (see below) |
 | Progress line (top) | every marble at its distance along the course; marbles further ahead are drawn over those behind; shows the leader (the winner once someone finishes) |
 | `G` or Edit track | track editor (see below): the race waits on the start line; click a piece to select it, drag the gizmo to move it (`1`) or turn it (`2`), snap sockets together, change its options, add / delete pieces, `Ctrl+Z` / `Ctrl+Y` undo / redo, `Del` deletes, `Esc` deselects; `3` shape (widen, raise / lower walls); Test race leaves the editor and starts a race on the edited course |
+| Graphics panel | Quality preset (Low for computers without a dedicated graphics card, Medium, High; the first visit guesses from the GPU) and each option on its own: sun shadows (off, under marbles only, low / high / ultra), ambient occlusion (GTAO: off / low at half resolution / high), tone mapping (off, filmic ACES, natural AgX; the marbles keep their exact colours), reflections (studio room or the theme's own sky), resolution (50 / 75 / 100 % of the screen's pixels), marble detail, smooth edges (antialiasing, after a reload), decoration (gantries, stands, spectators), dust, and a frame-rate counter. Remembered in this browser |
 | Physics panel | marble size, bounciness, grip and rolling resistance; track bounciness and grip; rubber pad bounciness. Apply restarts the race; values are remembered in this browser |
 
 URL parameters: `?seed=42` picks the starting seed; `?layout=loop` loads one
@@ -302,13 +346,18 @@ src/
   designs.js           marble designs: base patterns, textures, finishes, the marbles/ folder
   painter.js           marble paint editor
   stickers.js          the paint editor's sticker shapes
-  setup.js             race setup: number of marbles, names, designs
+  setup.js             race setup: mode (track / endless + minutes), number of marbles, names, designs
+  dropIn.js            endless mode: pieces dropping in and fading out
+  dust.js              endless mode: dust puffs where a piece lands
+  worldOrigin.js       endless mode: total floating-origin shift, for world-position shaders
   lineup.js            the racers down the left, spinning 3D marbles
   physics.js           world setup, fixed-timestep accumulator
   marbles.js           marble bodies and their interpolation state
   race.js              spawn, ranking, finish sensor, safety net (no DOM, runs headless);
                        new Race(RAPIER, seed, materials, layout, entries) races the given entries
-  render.js            renderer, boundless white space, lights, marble shadows, marble meshes, debug lines
+  render.js            renderer, boundless white space, lights, sun and contact shadows, ambient occlusion,
+                       tone mapping, reflections, marble meshes, debug lines
+  graphics.js          graphics settings: options, presets, first-visit guess, stored in this browser
   camera.js            follow camera, free fly camera, leader's view
   ui.js                overlay
   editor.js            track editor: selection, gizmo, socket markers, snapping, undo, save
@@ -317,6 +366,7 @@ src/
   course/
     pieces.js          THE LAYOUT as data: piece types, the default course, building from data
     course.js          builds a layout name or course data
+    endless.js         endless mode: random pieces, spawn / despawn window, finish timing, rebase
     frame.js           poses and turtle-style path tracing (length / turn / pitch / bank)
     trackBuilder.js    sweeps a railed U channel along a path
     geometry.js        sweep and lathe mesh helpers
@@ -407,6 +457,13 @@ running the same seed twice gives identical results.
 `npm run sim -- --layout bottleneck --seeds 150` stress-tests one section with
 all 8 marbles arriving together. `npm run sim -- --course file.json` races a
 course exported from the editor.
+
+`npm run sim -- --endless 120 --seeds 5` races endless courses of about 120 s
+and prints, per seed, how many units were built, rebases, overlap retries and
+fallbacks, the most units live at once and the largest coordinate a marble
+reached. Some random neighbours are harder than anything on the fixed course
+(a wall ride or tunnel drop right after a fast piece throws the odd marble
+out); the safety net puts those back, so expect a few rescues per long race.
 
 ### Last measured results
 

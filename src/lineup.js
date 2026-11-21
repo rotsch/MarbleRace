@@ -38,6 +38,12 @@ export class Lineup {
     window.addEventListener('resize', () => this.layout());
   }
 
+  // Graphics setting: share of the screen's pixels drawn (see graphics.js).
+  setResolution(scale) {
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2) * scale);
+    this.layout();
+  }
+
   setRace(race) {
     this.race = race;
     for (const it of this.items) {
