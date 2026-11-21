@@ -253,6 +253,7 @@ body.editing #ranking, body.editing #progress { display: none; }
   #ranking { left: 8px; min-width: 0; max-width: 46vw; max-height: calc(100dvh - 130px); overflow-y: auto; box-sizing: border-box; }
   #ranking li { gap: 5px; }
   #menu-toggle { display: block; right: 8px; flex: none; padding: 6px 12px; font-weight: 600; }
+  #fps { top: 66px; right: 104px; }
   #controls {
     display: none; top: 104px; right: 8px; width: min(250px, calc(100vw - 16px));
     max-height: calc(100dvh - 160px); box-shadow: 0 6px 24px rgba(0, 0, 0, 0.18);
