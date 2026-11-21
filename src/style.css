@@ -240,6 +240,20 @@ body.editing #ranking, body.editing #progress { display: none; }
   #painter { grid-template-columns: 190px 1fr 210px; }
 }
 #menu-toggle { display: none; }
+/* Touch move stick: a ring where the finger landed, a knob under the finger. */
+.touch-stick {
+  position: fixed; width: 112px; height: 112px; margin: -56px 0 0 -56px; border-radius: 50%;
+  border: 2px solid rgba(17, 17, 17, 0.45); background: rgba(255, 255, 255, 0.25);
+  pointer-events: none; z-index: 5; box-sizing: border-box;
+}
+.touch-stick[hidden] { display: none; }
+.touch-stick .knob {
+  position: absolute; left: 50%; top: 50%; width: 44px; height: 44px; margin: -22px 0 0 -22px;
+  border-radius: 50%; background: rgba(17, 17, 17, 0.35); border: 2px solid rgba(255, 255, 255, 0.8); box-sizing: border-box;
+}
+body[data-theme='neon'] .touch-stick { border-color: rgba(5, 217, 232, 0.8); background: rgba(26, 10, 51, 0.3); }
+body[data-theme='neon'] .touch-stick .knob { background: rgba(255, 42, 109, 0.6); }
+body[data-theme='itsense'] .touch-stick .knob { background: rgba(209, 0, 7, 0.55); }
 /* Phones and other small screens: progress across the top, a compact
    ranking under it on the left, the settings folded behind a Menu button,
    the race setup and the track editor as sheets along the bottom, and the

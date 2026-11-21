@@ -6,7 +6,7 @@ import { OPTIONS, PRESETS, presetOf, storeGraphics } from './graphics.js';
 const $ = (id) => document.getElementById(id);
 const CAMERA_HINTS = {
   follow: 'Follow camera tracks the leader.',
-  free: 'Free camera: drag to steer (or click to lock the mouse, Esc releases), wheel or pinch to fly, WASD move, Q/E up/down, Shift faster.',
+  free: 'Free camera: drag to steer (or click to lock the mouse, Esc releases), wheel to fly, WASD move, Q/E up/down, Shift faster. Touch: left half moves (a stick where your finger lands), right half looks.',
   pov: "Leader's view: riding on the leading marble.",
 };
 // Endless-mode progress line.

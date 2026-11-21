@@ -8,9 +8,10 @@ const NEAR = { follow: 0.05, free: 0.05, pov: 0.01 };
 
 // Three camera modes:
 //  follow  smoothly tracks the leading marble
-//  free    fly camera: drag (mouse or finger) or hold the right button to
-//          steer, click to steer with the pointer locked, mouse wheel or
-//          pinch to fly, WASD to move, Q/E up/down, Shift to move faster
+//  free    fly camera: drag or hold the right button to steer, click to
+//          steer with the pointer locked, mouse wheel to fly, WASD to move,
+//          Q/E up/down, Shift to move faster; on touch screens a move stick
+//          on the left half and look on the right half
 //  pov     rides on the leading marble, looking where it is going
 export class CameraRig {
   constructor(camera, dom) {
@@ -32,20 +33,23 @@ export class CameraRig {
     this.sensitivity = 0.0022;
     this.onRequestFree = null; // set by the UI so the checkbox stays in sync
 
-    // Mouse and touch steering, without needing pointer lock (embedded pages
-    // often may not lock the pointer):
-    //  - drag with the left mouse button or one finger: steer (enters free)
+    // Mouse steering, without needing pointer lock (embedded pages often may
+    // not lock the pointer):
+    //  - drag with the left mouse button: steer (enters free)
     //  - hold the right mouse button: steer without moving the mouse away
     //  - mouse wheel: fly forward / back (enters free)
-    //  - two fingers: pinch to fly forward / back, move both to slide
-    //  - a click without dragging: enter free and lock the pointer (mouse)
+    //  - a click without dragging: enter free and lock the pointer
+    // Touch screens use twin sticks (see _touchDown): a floating move stick
+    // on the left half of the screen, look on the right half.
     this.isBusy = null; // set by the editor: true while a gizmo is dragged
-    this.touchSensitivity = 0.006;
-    this.pointers = new Map(); // pointerId -> { x, y, type }
+    this.mouse = null; // { id, x, y } while the left mouse button is down
     this.dragged = false;
     this.dragDist = 0;
-    this.pinch = null; // { dist, mx, my }
     this.lastPointerType = 'mouse';
+    this.vel = new THREE.Vector3(); // free camera velocity, eased (units/s)
+    this._fwd = new THREE.Vector3();
+    this._right = new THREE.Vector3();
+    this._want = new THREE.Vector3();
     dom.style.touchAction = 'none';
 
     dom.addEventListener('click', (e) => {
@@ -67,21 +71,20 @@ export class CameraRig {
     this.looking = false;
     dom.addEventListener('pointerdown', (e) => {
       this.lastPointerType = e.pointerType || 'mouse';
-      if (e.pointerType === 'mouse' && e.button === 2) {
+      if (e.pointerType !== 'mouse') return this._touchDown(e);
+      if (e.button === 2) {
         if (this.free) this.looking = true;
         return;
       }
-      if (e.pointerType === 'mouse' && e.button !== 0) return;
-      this.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY, type: e.pointerType });
-      if (this.pointers.size === 1) {
-        this.dragged = false;
-        this.dragDist = 0;
-      }
-      this.pinch = this.pointers.size === 2 ? this._pinchState() : null;
+      if (e.button !== 0) return;
+      this.mouse = { id: e.pointerId, x: e.clientX, y: e.clientY };
+      this.dragged = false;
+      this.dragDist = 0;
     });
     window.addEventListener('pointermove', (e) => {
-      const p = this.pointers.get(e.pointerId);
-      if (!p) return;
+      if (e.pointerType !== 'mouse') return this._touchMove(e);
+      const p = this.mouse;
+      if (!p || p.id !== e.pointerId) return;
       const dx = e.clientX - p.x;
       const dy = e.clientY - p.y;
       p.x = e.clientX;
@@ -91,33 +94,14 @@ export class CameraRig {
         return;
       }
       if (document.pointerLockElement === dom || this.looking) return;
-      this.dragDist += Math.abs(dx) + Math.abs(dy);
-      if (this.dragDist < 6 && !this.dragged) return;
-      if (!this.dragged) {
-        this.dragged = true;
-        if (!this.free) this._requestFree();
-      }
-      if (this.pointers.size === 1) {
-        const k = p.type === 'mouse' ? this.sensitivity * 1.4 : this.touchSensitivity;
-        this._turn(dx * k, dy * k);
-      } else if (this.pointers.size === 2 && this.pinch) {
-        const now = this._pinchState();
-        const cam = this.camera;
-        const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(cam.quaternion);
-        const right = new THREE.Vector3(1, 0, 0).applyQuaternion(cam.quaternion);
-        const up = new THREE.Vector3(0, 1, 0).applyQuaternion(cam.quaternion);
-        cam.position.addScaledVector(forward, (now.dist - this.pinch.dist) * 0.03);
-        cam.position.addScaledVector(right, -(now.mx - this.pinch.mx) * 0.012);
-        cam.position.addScaledVector(up, (now.my - this.pinch.my) * 0.012);
-        this.pinch = now;
-      }
+      if (!this._passedThreshold(dx, dy)) return;
+      const k = this.sensitivity * 1.4;
+      this._turn(dx * k, dy * k);
     });
     const release = (e) => {
-      if (e.pointerType === 'mouse' && e.button === 2) this.looking = false;
-      this.pointers.delete(e.pointerId);
-      this.pinch = this.pointers.size === 2 ? this._pinchState() : null;
-      // A touch has no click after a drag to swallow the flag.
-      if (e.pointerType !== 'mouse' && this.pointers.size === 0) setTimeout(() => (this.dragged = false), 50);
+      if (e.pointerType !== 'mouse') return this._touchUp(e);
+      if (e.button === 2) this.looking = false;
+      if (this.mouse?.id === e.pointerId) this.mouse = null;
     };
     window.addEventListener('pointerup', release);
     window.addEventListener('pointercancel', release);
@@ -134,11 +118,34 @@ export class CameraRig {
         if (!this.free) this._requestFree();
         const px = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaMode === 2 ? e.deltaY * 400 : e.deltaY;
         const boost = e.shiftKey ? this.boost : 1;
-        const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(this.camera.quaternion);
+        const forward = this._fwd.set(0, 0, -1).applyQuaternion(this.camera.quaternion);
         this.camera.position.addScaledVector(forward, -THREE.MathUtils.clamp(px, -200, 200) * 0.01 * boost);
       },
       { passive: false },
     );
+
+    // Touch: twin sticks. A finger that lands on the left half of the screen
+    // is the move stick, one on the right half looks around; each keeps its
+    // role until it lifts, even across the middle, and a second finger on a
+    // side that already has one is ignored.
+    //  stick  floating: where the finger landed is the centre; 40 px of
+    //         drag is cruise speed (1), up to 4 (160 px, the Shift boost).
+    //         Up flies forward along the view (looking down dives), right
+    //         strafes right. Lifting it lets the camera coast to a stop.
+    //  look   like a trackpad: 0.005 rad per px of movement.
+    this.stick = { id: -1, x0: 0, y0: 0, fwd: 0, strafe: 0 };
+    this.look = { id: -1, x: 0, y: 0 };
+    this.touchSensitivity = 0.005;
+    this.stickPx = 40;
+    this.stickMax = 4;
+    this.touches = 0; // fingers down on the scene
+    // The stick shows where it is: a ring at its centre and a knob under the finger.
+    this.stickEl = document.createElement('div');
+    this.stickEl.className = 'touch-stick';
+    this.stickEl.hidden = true;
+    this.stickEl.innerHTML = '<div class="knob"></div>';
+    document.body.appendChild(this.stickEl);
+
     window.addEventListener('keydown', (e) => {
       if (isTyping(e)) return;
       this.keys.add(e.code);
@@ -148,14 +155,91 @@ export class CameraRig {
     window.addEventListener('blur', () => this.keys.clear());
   }
 
+  // Drags under 6 px are clicks / taps; past that the camera goes free and
+  // the click that ends the drag is swallowed.
+  _passedThreshold(dx, dy) {
+    if (this.dragged) return true;
+    this.dragDist += Math.abs(dx) + Math.abs(dy);
+    if (this.dragDist < 6) return false;
+    this.dragged = true;
+    if (!this.free) this._requestFree();
+    return true;
+  }
+
+  _touchDown(e) {
+    e.preventDefault();
+    const r = this.dom.getBoundingClientRect();
+    if (this.touches++ === 0) {
+      this.dragged = false;
+      this.dragDist = 0;
+    }
+    if (e.clientX - r.left < r.width / 2) {
+      if (this.stick.id < 0) Object.assign(this.stick, { id: e.pointerId, x0: e.clientX, y0: e.clientY, fwd: 0, strafe: 0 });
+    } else if (this.look.id < 0) Object.assign(this.look, { id: e.pointerId, x: e.clientX, y: e.clientY });
+  }
+
+  _touchMove(e) {
+    const st = this.stick;
+    const lk = this.look;
+    if (e.pointerId !== st.id && e.pointerId !== lk.id) return;
+    if (this.isBusy?.()) {
+      this.dragged = true; // dragging a gizmo: neither move nor look
+      st.fwd = st.strafe = 0;
+      return;
+    }
+    if (e.pointerId === st.id) {
+      const dx = e.clientX - st.x0;
+      const dy = e.clientY - st.y0;
+      if (!this.dragged && Math.abs(dx) + Math.abs(dy) < 6) return;
+      this._passedThreshold(6, 0);
+      const m = this.stickMax;
+      st.fwd = THREE.MathUtils.clamp(-dy / this.stickPx, -m, m);
+      st.strafe = THREE.MathUtils.clamp(dx / this.stickPx, -m, m);
+      this._showStick(e.clientX, e.clientY);
+    } else {
+      const dx = e.clientX - lk.x;
+      const dy = e.clientY - lk.y;
+      lk.x = e.clientX;
+      lk.y = e.clientY;
+      if (!this._passedThreshold(dx, dy)) return;
+      this._turn(dx * this.touchSensitivity, dy * this.touchSensitivity);
+    }
+  }
+
+  _touchUp(e) {
+    this.touches = Math.max(0, this.touches - 1);
+    if (e.pointerId === this.stick.id) {
+      this.stick.id = -1;
+      this.stick.fwd = this.stick.strafe = 0;
+      this.stickEl.hidden = true;
+    } else if (e.pointerId === this.look.id) this.look.id = -1;
+    // A touch has no click after a drag to swallow the flag.
+    if (this.touches === 0) setTimeout(() => (this.dragged = false), 50);
+  }
+
+  _showStick(x, y) {
+    const el = this.stickEl;
+    const st = this.stick;
+    el.hidden = false;
+    el.style.left = `${st.x0}px`;
+    el.style.top = `${st.y0}px`;
+    // The knob follows the finger, held to the ring's edge (full speed).
+    const max = this.stickPx * this.stickMax;
+    let dx = x - st.x0;
+    let dy = y - st.y0;
+    const d = Math.hypot(dx, dy);
+    const ring = 56; // ring radius in px, see .touch-stick
+    const reach = Math.min(d, max) / max * ring;
+    if (d > 0) {
+      dx = (dx / d) * reach;
+      dy = (dy / d) * reach;
+    }
+    el.firstChild.style.transform = `translate(${dx}px, ${dy}px)`;
+  }
+
   _turn(dYaw, dPitch) {
     this.yaw -= dYaw;
     this.pitch = THREE.MathUtils.clamp(this.pitch - dPitch, -MAX_PITCH, MAX_PITCH);
-  }
-
-  _pinchState() {
-    const [a, b] = [...this.pointers.values()];
-    return { dist: Math.hypot(a.x - b.x, a.y - b.y), mx: (a.x + b.x) / 2, my: (a.y + b.y) / 2 };
   }
 
   _requestFree() {
@@ -172,6 +256,7 @@ export class CameraRig {
     this.camera.near = NEAR[mode];
     this.camera.updateProjectionMatrix();
     this.povInit = false;
+    this.vel.set(0, 0, 0);
     if (mode === 'free') {
       // Start from the current view direction so nothing jumps.
       const dir = new THREE.Vector3();
@@ -214,23 +299,27 @@ export class CameraRig {
     this.povInit = true;
   }
 
+  // Keyboard and touch stick add up to a wanted velocity; the velocity eases
+  // towards it (frame-rate independent), so lifting the stick coasts to a stop.
   _updateFree(dt) {
     const cam = this.camera;
     cam.rotation.set(this.pitch, this.yaw, 0, 'YXZ');
-    const forward = new THREE.Vector3(0, 0, -1).applyEuler(cam.rotation);
-    const right = new THREE.Vector3(1, 0, 0).applyEuler(cam.rotation);
-    const move = new THREE.Vector3();
+    const forward = this._fwd.set(0, 0, -1).applyEuler(cam.rotation);
+    const right = this._right.set(1, 0, 0).applyEuler(cam.rotation);
+    const want = this._want.set(0, 0, 0);
     const k = this.keys;
-    if (k.has('KeyW')) move.add(forward);
-    if (k.has('KeyS')) move.sub(forward);
-    if (k.has('KeyD')) move.add(right);
-    if (k.has('KeyA')) move.sub(right);
-    if (k.has('KeyQ')) move.y += 1;
-    if (k.has('KeyE')) move.y -= 1;
-    if (move.lengthSq() > 0) {
-      const speed = this.baseSpeed * (k.has('ShiftLeft') || k.has('ShiftRight') ? this.boost : 1);
-      cam.position.addScaledVector(move.normalize(), speed * dt);
-    }
+    if (k.has('KeyW')) want.add(forward);
+    if (k.has('KeyS')) want.sub(forward);
+    if (k.has('KeyD')) want.add(right);
+    if (k.has('KeyA')) want.sub(right);
+    if (k.has('KeyQ')) want.y += 1;
+    if (k.has('KeyE')) want.y -= 1;
+    if (want.lengthSq() > 0) want.normalize().multiplyScalar(this.baseSpeed * (k.has('ShiftLeft') || k.has('ShiftRight') ? this.boost : 1));
+    want.addScaledVector(forward, this.stick.fwd * this.baseSpeed);
+    want.addScaledVector(right, this.stick.strafe * this.baseSpeed);
+    this.vel.lerp(want, 1 - Math.exp(-dt * 7));
+    if (this.vel.lengthSq() < 1e-6 && want.lengthSq() === 0) this.vel.set(0, 0, 0);
+    cam.position.addScaledVector(this.vel, dt);
     this.focus.copy(cam.position).addScaledVector(forward, 6);
   }
 

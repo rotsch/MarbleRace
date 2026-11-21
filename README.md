@@ -80,9 +80,9 @@ The track editor is off in endless mode.
 | `F`, click, or checkbox | debug: shoot marbles from the camera (click aims at the cursor, at the screen centre while the mouse steers the free camera; `F` aims at the last cursor position). Shot marbles are white, black, grey or brown, are not ranked or rescued, fly only while the race runs, and vanish on the room floor or at the finish line |
 | `C` or Camera menu | cycle the camera: follow the leader → free fly → leader's view (rides on the leading marble, looking along the track a little ahead; it switches marbles once a new leader is 2.5 cm ahead) |
 | click scene | enter free camera and steer with the mouse (pointer lock, `Esc` releases); holding the right mouse button also steers it |
-| drag the scene (mouse or finger) | enter free camera and steer it, without pointer lock (works where the page may not lock the mouse, e.g. when embedded) |
+| drag the scene (mouse) | enter free camera and steer it, without pointer lock (works where the page may not lock the mouse, e.g. when embedded) |
 | mouse wheel | fly forward / back (enters free camera; `Shift` flies faster) |
-| two fingers | pinch to fly forward / back, move both fingers to slide sideways / up / down |
+| touch: twin sticks | a finger on the left half of the scene is a floating move stick: where it lands is the centre (a ring shows it), 40 px of drag is cruise speed and 160 px is full speed (the Shift boost); up flies forward along the view, so looking down dives, sideways strafes, and lifting it coasts to a stop. A finger on the right half looks around (0.005 rad per px). Each finger keeps its role until it lifts; a second finger on the same side is ignored. Taps still select (editor) and shoot. No straight up / down on touch: look up or down and fly forward |
 | Small screens | on phones (or below 700 px wide / 500 px high) the settings fold behind a Menu button (it closes when the scene is touched), the ranking is compact, race setup and the track editor sit along the bottom, and the paint editor stacks the marble above its panels |
 | `W` `A` `S` `D` | fly forward / left / back / right (enters free camera) |
 | `Q` / `E` | fly up / down |
