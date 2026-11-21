@@ -284,6 +284,7 @@ editor = new Editor(view, rig, {
   },
 });
 handlers.editor = editor;
+rig.isBusy = () => editor.active && (editor.gizmo.dragging || editor.shapeGizmo.dragging);
 window.editor = editor; // console access, like window.race
 if (trackLoaded) editor.trackName = trackLoaded;
 const editorPanel = new EditorPanel(editor, { onTest: () => setEditing(false, true) });

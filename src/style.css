@@ -218,8 +218,54 @@ body.editing #ranking, body.editing #progress { display: none; }
   #start-overlay { padding: 0 14px 14px; }
   #painter { grid-template-columns: 190px 1fr 210px; }
 }
-@media (max-width: 560px) {
-  #controls { top: auto; bottom: 14px; max-height: 50vh; }
+#menu-toggle { display: none; }
+/* Phones and other small screens: progress across the top, a compact
+   ranking under it on the left, the settings folded behind a Menu button,
+   the race setup and the track editor as sheets along the bottom, and the
+   paint editor stacked (marble on top, the panels scrolling below it). */
+@media (max-width: 700px), (max-height: 500px) {
+  body { font-size: 12px; }
+  .panel { top: 8px; padding: 6px 8px; }
+  #progress { left: 8px; right: 8px; padding: 5px 8px 4px; }
+  #leader { margin-bottom: 3px; }
+  #ranking, #menu-toggle { top: 66px; }
+  #ranking { left: 8px; min-width: 0; max-width: 46vw; max-height: calc(100dvh - 130px); overflow-y: auto; box-sizing: border-box; }
+  #ranking li { gap: 5px; }
+  #menu-toggle { display: block; right: 8px; flex: none; padding: 6px 12px; font-weight: 600; }
+  #controls {
+    display: none; top: 104px; right: 8px; width: min(250px, calc(100vw - 16px));
+    max-height: calc(100dvh - 160px); box-shadow: 0 6px 24px rgba(0, 0, 0, 0.18);
+  }
+  body.menu-open #controls { display: flex; }
+  #sound { bottom: 8px; left: 8px; }
+  body.editing #sound { display: none; }
+  #start-overlay { padding: 0 8px 8px; z-index: 2; }
+  #ui:has(#start-overlay:not([hidden])) #ranking { display: none; }
+  #setup { max-height: calc(100dvh - 78px); overflow-y: auto; }
+  #setup-entries, #setup-entries.wide { grid-template-columns: 1fr; max-height: none; overflow: visible; }
+  #setup .row { flex-wrap: wrap; }
+  #start-race { padding: 8px 24px; font-size: 18px; }
+  #editor { top: auto; bottom: 8px; left: 8px; right: 8px; width: auto; max-height: 46dvh; }
+  #countdown { font-size: 84px; }
+  #paused { bottom: 64px; white-space: nowrap; }
+}
+@media (max-height: 500px) {
+  #ranking { max-height: calc(100dvh - 80px); }
+  #controls { max-height: calc(100dvh - 112px); }
+  #editor { top: 66px; bottom: 8px; left: auto; width: 270px; max-height: none; }
+  .pt-panel { height: 100dvh; }
+}
+@media (max-width: 700px) {
+  #painter { grid-template-columns: 1fr; grid-template-rows: 44dvh auto auto; overflow-y: auto; }
+  .pt-view { order: -1; position: sticky; top: 0; z-index: 1; }
+  .pt-panel { height: auto; overflow: visible; border-right: none; border-top: 1px solid #111; }
+  .pt-right { border-left: none; }
+}
+/* Touch screens: bigger targets, and 16px text fields so phones do not zoom in. */
+@media (pointer: coarse) {
+  button { min-height: 32px; }
+  input[type='text'], select, #setup-count { font-size: 16px; }
+  input[type='range'] { min-height: 24px; }
 }
 /* ITSENSE theme: the style of itsense.ch. Inter (Arial, Helvetica if it is
    not installed), light text weight, dark slate type on white panels,

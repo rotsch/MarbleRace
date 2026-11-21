@@ -8,8 +8,9 @@ const NEAR = { follow: 0.05, free: 0.05, pov: 0.01 };
 
 // Three camera modes:
 //  follow  smoothly tracks the leading marble
-//  free    fly camera: click to steer with the mouse (pointer lock) or hold
-//          the right button, WASD to move, Q/E up/down, Shift to move faster
+//  free    fly camera: drag (mouse or finger) or hold the right button to
+//          steer, click to steer with the pointer locked, mouse wheel or
+//          pinch to fly, WASD to move, Q/E up/down, Shift to move faster
 //  pov     rides on the leading marble, looking where it is going
 export class CameraRig {
   constructor(camera, dom) {
@@ -31,26 +32,113 @@ export class CameraRig {
     this.sensitivity = 0.0022;
     this.onRequestFree = null; // set by the UI so the checkbox stays in sync
 
+    // Mouse and touch steering, without needing pointer lock (embedded pages
+    // often may not lock the pointer):
+    //  - drag with the left mouse button or one finger: steer (enters free)
+    //  - hold the right mouse button: steer without moving the mouse away
+    //  - mouse wheel: fly forward / back (enters free)
+    //  - two fingers: pinch to fly forward / back, move both to slide
+    //  - a click without dragging: enter free and lock the pointer (mouse)
+    this.isBusy = null; // set by the editor: true while a gizmo is dragged
+    this.touchSensitivity = 0.006;
+    this.pointers = new Map(); // pointerId -> { x, y, type }
+    this.dragged = false;
+    this.dragDist = 0;
+    this.pinch = null; // { dist, mx, my }
+    this.lastPointerType = 'mouse';
+    dom.style.touchAction = 'none';
+
     dom.addEventListener('click', (e) => {
-      if (this.onClick?.(e)) return; // handled elsewhere (shooting marbles)
+      if (this.dragged) {
+        this.dragged = false;
+        return; // the end of a drag, not a click
+      }
+      if (this.onClick?.(e)) return; // handled elsewhere (shooting marbles, editor)
+      if (this.lastPointerType !== 'mouse') return; // taps do not grab the camera
       if (!this.free) this._requestFree();
-      if (document.pointerLockElement !== dom) dom.requestPointerLock?.();
+      if (document.pointerLockElement !== dom) {
+        try {
+          dom.requestPointerLock?.()?.catch?.(() => {});
+        } catch {
+          // not allowed here: dragging steers instead
+        }
+      }
     });
-    // Holding the right mouse button also steers the free camera, without
-    // grabbing the mouse (the track editor needs the cursor for clicking).
     this.looking = false;
-    dom.addEventListener('mousedown', (e) => {
-      if (e.button === 2 && this.free) this.looking = true;
+    dom.addEventListener('pointerdown', (e) => {
+      this.lastPointerType = e.pointerType || 'mouse';
+      if (e.pointerType === 'mouse' && e.button === 2) {
+        if (this.free) this.looking = true;
+        return;
+      }
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
+      this.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY, type: e.pointerType });
+      if (this.pointers.size === 1) {
+        this.dragged = false;
+        this.dragDist = 0;
+      }
+      this.pinch = this.pointers.size === 2 ? this._pinchState() : null;
     });
-    window.addEventListener('mouseup', (e) => {
-      if (e.button === 2) this.looking = false;
+    window.addEventListener('pointermove', (e) => {
+      const p = this.pointers.get(e.pointerId);
+      if (!p) return;
+      const dx = e.clientX - p.x;
+      const dy = e.clientY - p.y;
+      p.x = e.clientX;
+      p.y = e.clientY;
+      if (this.isBusy?.()) {
+        this.dragged = true; // dragging a gizmo: neither steer nor click
+        return;
+      }
+      if (document.pointerLockElement === dom || this.looking) return;
+      this.dragDist += Math.abs(dx) + Math.abs(dy);
+      if (this.dragDist < 6 && !this.dragged) return;
+      if (!this.dragged) {
+        this.dragged = true;
+        if (!this.free) this._requestFree();
+      }
+      if (this.pointers.size === 1) {
+        const k = p.type === 'mouse' ? this.sensitivity * 1.4 : this.touchSensitivity;
+        this._turn(dx * k, dy * k);
+      } else if (this.pointers.size === 2 && this.pinch) {
+        const now = this._pinchState();
+        const cam = this.camera;
+        const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(cam.quaternion);
+        const right = new THREE.Vector3(1, 0, 0).applyQuaternion(cam.quaternion);
+        const up = new THREE.Vector3(0, 1, 0).applyQuaternion(cam.quaternion);
+        cam.position.addScaledVector(forward, (now.dist - this.pinch.dist) * 0.03);
+        cam.position.addScaledVector(right, -(now.mx - this.pinch.mx) * 0.012);
+        cam.position.addScaledVector(up, (now.my - this.pinch.my) * 0.012);
+        this.pinch = now;
+      }
     });
+    const release = (e) => {
+      if (e.pointerType === 'mouse' && e.button === 2) this.looking = false;
+      this.pointers.delete(e.pointerId);
+      this.pinch = this.pointers.size === 2 ? this._pinchState() : null;
+      // A touch has no click after a drag to swallow the flag.
+      if (e.pointerType !== 'mouse' && this.pointers.size === 0) setTimeout(() => (this.dragged = false), 50);
+    };
+    window.addEventListener('pointerup', release);
+    window.addEventListener('pointercancel', release);
     dom.addEventListener('contextmenu', (e) => e.preventDefault());
     document.addEventListener('mousemove', (e) => {
       if (!this.free || (document.pointerLockElement !== dom && !this.looking)) return;
-      this.yaw -= e.movementX * this.sensitivity;
-      this.pitch = THREE.MathUtils.clamp(this.pitch - e.movementY * this.sensitivity, -MAX_PITCH, MAX_PITCH);
+      this._turn(e.movementX * this.sensitivity, e.movementY * this.sensitivity);
     });
+    dom.addEventListener(
+      'wheel',
+      (e) => {
+        if (this.isBusy?.()) return;
+        e.preventDefault();
+        if (!this.free) this._requestFree();
+        const px = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaMode === 2 ? e.deltaY * 400 : e.deltaY;
+        const boost = e.shiftKey ? this.boost : 1;
+        const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(this.camera.quaternion);
+        this.camera.position.addScaledVector(forward, -THREE.MathUtils.clamp(px, -200, 200) * 0.01 * boost);
+      },
+      { passive: false },
+    );
     window.addEventListener('keydown', (e) => {
       if (isTyping(e)) return;
       this.keys.add(e.code);
@@ -58,6 +146,16 @@ export class CameraRig {
     });
     window.addEventListener('keyup', (e) => this.keys.delete(e.code));
     window.addEventListener('blur', () => this.keys.clear());
+  }
+
+  _turn(dYaw, dPitch) {
+    this.yaw -= dYaw;
+    this.pitch = THREE.MathUtils.clamp(this.pitch - dPitch, -MAX_PITCH, MAX_PITCH);
+  }
+
+  _pinchState() {
+    const [a, b] = [...this.pointers.values()];
+    return { dist: Math.hypot(a.x - b.x, a.y - b.y), mx: (a.x + b.x) / 2, my: (a.y + b.y) / 2 };
   }
 
   _requestFree() {

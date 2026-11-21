@@ -5,7 +5,7 @@ import { TUNABLES, DEFAULTS, applyValues, currentValues, store } from './tuning.
 const $ = (id) => document.getElementById(id);
 const CAMERA_HINTS = {
   follow: 'Follow camera tracks the leader.',
-  free: 'Free camera: click to steer with the mouse (Esc releases), WASD move, Q/E up/down, Shift faster.',
+  free: 'Free camera: drag to steer (or click to lock the mouse, Esc releases), wheel or pinch to fly, WASD move, Q/E up/down, Shift faster.',
   pov: "Leader's view: riding on the leading marble.",
 };
 const SPEEDS = [0.1, 0.25, 0.5, 0.75, 1, 1.5, 2, 3, 4];
@@ -31,6 +31,20 @@ export class UI {
     this.countdownText = '';
     this.countdownTimer = null;
     $('start-race').addEventListener('click', () => this.onStart?.());
+    // Small screens: the settings panel folds away behind a Menu button and
+    // closes again when the scene is touched.
+    const menu = $('menu-toggle');
+    const setMenu = (open) => {
+      document.body.classList.toggle('menu-open', open);
+      menu.setAttribute('aria-expanded', String(open));
+      menu.textContent = open ? '✕ Close' : '☰ Menu';
+      menu.title = open ? 'Hide the settings' : 'Show the settings';
+    };
+    menu.addEventListener('click', () => {
+      setMenu(!document.body.classList.contains('menu-open'));
+      menu.blur();
+    });
+    $('scene').addEventListener('pointerdown', () => setMenu(false));
     this.lastHtml = '';
 
     $('restart').addEventListener('click', () => handlers.restart(this.seed.value.trim() || '1'));
